@@ -1,20 +1,28 @@
 package dns.visuals.mixin;
 
+import dns.visuals.hud.HudManager;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
+import net.minecraft.client.render.RenderTickCounter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Custom crosshair: replaces the vanilla crosshair when the Crosshair module is on. */
+/** Custom crosshair + HUD rendering hook. HudRenderCallback was removed in 1.21.x, so HUD is drawn at the tail of InGameHud#render. */
 @Mixin(InGameHud.class)
 public class InGameHudMixin {
+
+	@Inject(method = "render", at = @At("TAIL"))
+	private void dnsvisuals$hud(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
+		HudManager.renderHud(ctx, tickCounter);
+	}
+
 	@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
-	private void dnsvisuals$crosshair(DrawContext ctx, CallbackInfo ci) {
+	private void dnsvisuals$crosshair(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
 		Module ch = ModuleManager.INSTANCE.find("Crosshair");
 		if (ch == null || !ch.isEnabled()) return;
 		MinecraftClient mc = MinecraftClient.getInstance();
@@ -56,7 +64,7 @@ public class InGameHudMixin {
 	}
 
 	private void dnsvisuals$circle(DrawContext ctx, int cx, int cy, int r, int color, int oc) {
-		for (int deg = 0; deg < 360; deg += 6) {
+		for (int deg = 0; deg < 360; deg += 4) {
 			double rad = Math.toRadians(deg);
 			int px = cx + (int) Math.round(Math.cos(rad) * r);
 			int py = cy + (int) Math.round(Math.sin(rad) * r);
