@@ -3,7 +3,7 @@
 	"id": "dnsvisuals",
 	"version": "${version}",
 	"name": "DnsVisuals",
-	"description": "HUD / visual client: watermark, FPS, CPS, TPS, ArmorHUD, custom crosshair, hitboxes, themes and chat tweaks. Right Shift opens the ClickGUI.",
+	"description": "HUD / visual client for Minecraft 1.21.11: watermark, FPS, CPS, TPS, ArmorHUD, custom crosshair, hitboxes, sky color, themes and more. Right Shift opens the ClickGUI.",
 	"authors": ["You"],
 	"contact": {},
 	"license": "MIT",
@@ -18,9 +18,9 @@
 		"dnsvisuals.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.15.0",
+		"fabricloader": ">=0.16.0",
 		"fabric-api": "*",
-		"minecraft": "~1.20.4",
-		"java": ">=17"
+		"minecraft": ">=1.21.11",
+		"java": ">=21"
 	}
 }
