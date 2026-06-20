@@ -2,7 +2,7 @@ package dns.visuals.render;
 
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
