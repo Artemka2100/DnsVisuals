@@ -1,5 +1,6 @@
 package dns.visuals.render;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
@@ -77,8 +78,9 @@ public class EspRenderer {
 		ms.translate(-cam.x, -cam.y, -cam.z);
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
-		// proj * modelView for screen projection of nametags
-		Matrix4f mvp = new Matrix4f(context.projectionMatrix()).mul(modelView);
+		// proj * modelView for screen projection of nametags. WorldRenderContext no longer exposes
+		// projectionMatrix() in 1.21.11, so read the current projection from RenderSystem.
+		Matrix4f mvp = new Matrix4f(RenderSystem.getProjectionMatrix()).mul(modelView);
 		int sw = mc.getWindow().getScaledWidth();
 		int sh = mc.getWindow().getScaledHeight();
 
