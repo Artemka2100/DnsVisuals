@@ -37,6 +37,12 @@ import java.util.List;
 public class EspRenderer {
 	public static final EspRenderer INSTANCE = new EspRenderer();
 
+	/**
+	 * The vertical FOV (degrees) currently used for rendering. GameRenderer#getFov is private, so
+	 * GameRendererMixin captures the returned value here each frame for nametag projection.
+	 */
+	public static volatile float lastFov = 70f;
+
 	private final MinecraftClient mc = MinecraftClient.getInstance();
 
 	/** Screen-space nametags computed this frame (consumed by the HUD overlay pass). */
@@ -78,10 +84,10 @@ public class EspRenderer {
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
 		// proj * modelView for screen projection of nametags. Neither WorldRenderContext nor
-		// RenderSystem expose the projection matrix in 1.21.11, so we rebuild a perspective matrix
-		// from the current FOV + aspect ratio. Near/far don't affect screen x/y, so any sane values
-		// are fine here.
-		float fovDeg = mc.gameRenderer.getFov(camera, 1.0f, true);
+		// RenderSystem expose the projection matrix in 1.21.11, and GameRenderer#getFov is private,
+		// so we rebuild a perspective matrix from the FOV captured by GameRendererMixin. Near/far
+		// don't affect screen x/y, so any sane values are fine here.
+		float fovDeg = lastFov > 0f ? lastFov : 70f;
 		int fbW = mc.getWindow().getFramebufferWidth();
 		int fbH = mc.getWindow().getFramebufferHeight();
 		float aspect = fbH == 0 ? 1f : (float) fbW / (float) fbH;
