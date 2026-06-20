@@ -7,8 +7,7 @@
 		"EntityMixin",
 		"GameRendererMixin",
 		"InGameHudMixin",
-		"MinecraftClientMixin",
-		"ScreenMixin"
+		"MinecraftClientMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
