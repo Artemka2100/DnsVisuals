@@ -446,14 +446,22 @@ public class ModuleManager {
 				.add(new ColorSetting("Color", "ESP color", 255, 80, 80, 255))
 				.add(new SliderSetting("Fill opacity", "Fill alpha", 40, 0, 150, 5, "")));
 
-		// Chams -> solid color overlay on hands + players (visible only)
-		reg(new Module("Chams", "Solid color overlay (hands + players)", Category.RENDER)
-				.add(new BooleanSetting("Hands", "Color your hands", true))
-				.add(new BooleanSetting("Players", "Color players", true))
-				.add(new BooleanSetting("Visible only", "Only when visible", true))
-				.add(new ColorSetting("Hand color", "Hand overlay", 120, 200, 255, 255))
-				.add(new ColorSetting("Player color", "Player overlay", 255, 120, 120, 255))
-				.add(new SliderSetting("Opacity", "Overlay alpha", 160, 40, 255, 5, "")));
+		// Chams -> solid color FILL on players/mobs (depth-respecting; does not show through walls)
+		reg(new Module("Chams", "Solid color fill on players/mobs", Category.RENDER)
+				.add(new ModeSetting("Mode", "Render style", "Fill", "Fill", "Outline", "Both"))
+				.add(new BooleanSetting("Players", "Color other players", true))
+				.add(new BooleanSetting("Mobs", "Color mobs/animals", false))
+				.add(new BooleanSetting("Self", "Color your own model (3rd person)", false))
+				.add(new BooleanSetting("Visible only", "Only when in line of sight", true))
+				.add(new ColorSetting("Players color", "Player fill color", 255, 120, 120, 255))
+				.add(new ColorSetting("Mobs color", "Mob fill color", 120, 200, 255, 255))
+				.add(new SliderSetting("Opacity", "Fill alpha", 255, 40, 255, 5, "")));
+
+		// NoRender -> disable selected visual effects
+		reg(new Module("NoRender", "Disable selected visual effects", Category.RENDER)
+				.add(new BooleanSetting("HurtCam", "No damage camera tilt", true))
+				.add(new BooleanSetting("Hand", "Hide first-person hand", false))
+				.add(new BooleanSetting("Fire", "Hide first-person fire overlay", true)));
 	}
 
 	// =========================== INTERFACE ===========================
