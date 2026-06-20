@@ -113,7 +113,7 @@ public class ClickGuiScreen extends Screen {
 		double dt = delta();
 		Module clickGui = ModuleManager.INSTANCE.find("ClickGUI");
 		if (clickGui == null || clickGui.boolVal("Background dim")) {
-			this.renderBackground(ctx, mouseX, mouseY, tickDelta);
+			ctx.fill(0, 0, this.width, this.height, 0x66000000); // light even dim (was vanilla renderBackground - too dark)
 		}
 
 		int accent = accent();
