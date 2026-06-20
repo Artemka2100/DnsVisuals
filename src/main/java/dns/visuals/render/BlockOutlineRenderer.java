@@ -4,7 +4,6 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.util.ColorUtil;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -13,6 +12,8 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexRendering;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.RotationAxis;
@@ -21,12 +22,15 @@ import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
 
 /**
- * Custom block selection outline. Subscribes to Fabric's BLOCK_OUTLINE event: when the module is
- * enabled we draw our own (colored / optionally rainbow / optionally filled) outline and return
- * false to suppress the vanilla one. When disabled we return true so vanilla draws as normal.
+ * Custom block selection outline.
  *
- * Uses the same camera-relative matrix + engine-managed consumers approach as the hitbox/ESP
- * renderers so it lines up correctly and flushes with the world render pass.
+ * The Fabric BLOCK_OUTLINE event + BlockOutlineContext were removed/redesigned during the 1.21.9
+ * port, so instead of subscribing to that unstable event we draw our outline during the same
+ * BEFORE_DEBUG_RENDER pass used by the hitbox/ESP renderers and read the targeted block from the
+ * player's crosshair target. This uses only stable vanilla APIs.
+ *
+ * Note: this draws ON TOP of the vanilla outline rather than replacing it, but our colored/optionally
+ * filled outline is what the user sees.
  */
 public class BlockOutlineRenderer {
 	public static final BlockOutlineRenderer INSTANCE = new BlockOutlineRenderer();
@@ -35,23 +39,24 @@ public class BlockOutlineRenderer {
 
 	private BlockOutlineRenderer() {}
 
-	public boolean onBlockOutline(WorldRenderContext wrc, WorldRenderEvents.BlockOutlineContext boc) {
+	public void onWorldRender(WorldRenderContext wrc) {
 		Module m = ModuleManager.INSTANCE.find("BlockOutline");
-		if (m == null || !m.isEnabled()) return true; // let vanilla draw
-		if (mc.world == null) return true;
+		if (m == null || !m.isEnabled()) return;
+		if (mc.world == null || mc.player == null) return;
 
-		BlockPos pos = boc.blockPos();
-		BlockState state = boc.blockState();
-		if (pos == null || state == null) return true;
+		HitResult hit = mc.crosshairTarget;
+		if (!(hit instanceof BlockHitResult bhr) || hit.getType() != HitResult.Type.BLOCK) return;
 
+		BlockPos pos = bhr.getBlockPos();
+		BlockState state = mc.world.getBlockState(pos);
 		VoxelShape shape = state.getOutlineShape(mc.world, pos);
-		if (shape.isEmpty()) return false; // nothing to draw, but still suppress vanilla
+		if (shape.isEmpty()) return;
 
 		VertexConsumerProvider consumers = wrc.consumers();
-		if (consumers == null) return true;
+		if (consumers == null) return;
 
 		Camera camera = mc.gameRenderer.getCamera();
-		if (camera == null) return true;
+		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
 		MatrixStack ms = new MatrixStack();
@@ -74,8 +79,6 @@ public class BlockOutlineRenderer {
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 		VertexRendering.drawOutline(ms, vc, shape, pos.getX(), pos.getY(), pos.getZ(), color, width);
-
-		return false; // suppress the vanilla outline
 	}
 
 	private static void filledBox(VertexConsumer vc, Matrix4f m, int c, Box b) {
