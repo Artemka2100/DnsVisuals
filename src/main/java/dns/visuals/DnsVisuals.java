@@ -6,12 +6,15 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
+import dns.visuals.render.Waypoint;
+import dns.visuals.render.WaypointHud;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.CpsTracker;
 import dns.visuals.util.TpsTracker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
@@ -30,6 +33,8 @@ public class DnsVisuals implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		ModuleManager.INSTANCE.init();
+		// Register the Waypoint HUD module before loading config so its state persists too.
+		ModuleManager.INSTANCE.all().add(WaypointHud.createModule());
 		ConfigManager.load();
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
@@ -45,6 +50,9 @@ public class DnsVisuals implements ClientModInitializer {
 			AttackTracker.record(entity);
 			return ActionResult.PASS;
 		});
+
+		// Intercept the .goto chat command client-side (cancel sending it to the server).
+		ClientSendMessageEvents.ALLOW_CHAT.register(message -> !Waypoint.handleCommand(message));
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
