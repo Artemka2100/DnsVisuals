@@ -18,8 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(HeldItemRenderer.class)
 public class HeldItemRendererMixin {
 
-	/** CustomHand: offset and resize the entire first-person hand/item rendering. */
-	@Inject(method = "renderItem", at = @At("HEAD"), require = 0)
+	/**
+	 * CustomHand: offset and resize the entire first-person hand/item rendering.
+	 * HeldItemRenderer has multiple renderItem overloads, so we pin the full descriptor of the
+	 * first-person overload to avoid matching the wrong method. require = 0 keeps a future
+	 * signature change from crashing the client (the feature just goes inert instead).
+	 */
+	@Inject(method = "renderItem(FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;Lnet/minecraft/client/network/ClientPlayerEntity;I)V", at = @At("HEAD"), require = 0)
 	private void dnsvisuals$customHand(float tickProgress, MatrixStack matrices, OrderedRenderCommandQueue queue, ClientPlayerEntity player, int light, CallbackInfo ci) {
 		Module m = ModuleManager.INSTANCE.find("CustomHand");
 		if (m == null || !m.isEnabled()) return;
