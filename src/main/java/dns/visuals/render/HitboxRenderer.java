@@ -2,6 +2,7 @@ package dns.visuals.render;
 
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayers;
@@ -24,8 +25,11 @@ import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
 
 /**
- * Renders entity hitboxes and spawns hit particles.
- * Migrated to Minecraft 1.21.11 rendering APIs.
+ * Renders entity hitboxes and spawns hit particles (Minecraft 1.21.11 render APIs).
+ *
+ * Important: we draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let
+ * the world renderer flush it. Grabbing a fresh immediate and calling draw() ourselves mid-frame
+ * does not reliably show up, which is why boxes were previously invisible.
  */
 public class HitboxRenderer {
 	public static final HitboxRenderer INSTANCE = new HitboxRenderer();
@@ -37,26 +41,25 @@ public class HitboxRenderer {
 
 	private HitboxRenderer() {}
 
-	/**
-	 * Called from the world-render callback after the world has been rendered.
-	 * Builds a camera-relative MatrixStack because WorldRenderContext#matrixStack
-	 * was removed in 1.21.9+.
-	 */
-	public void onWorldRender() {
+	public void onWorldRender(WorldRenderContext context) {
 		Module hb = ModuleManager.INSTANCE.find("Hitboxes");
 		if (hb == null || !hb.isEnabled()) return;
 		if (mc.world == null || mc.player == null) return;
+
+		VertexConsumerProvider consumers = context.consumers();
+		if (consumers == null) return;
 
 		Camera camera = mc.gameRenderer.getCamera();
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
+		// Camera-relative matrix: rotate by the camera, then translate world->camera space.
 		MatrixStack ms = new MatrixStack();
 		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
 		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180f));
+		ms.translate(-cam.x, -cam.y, -cam.z);
 
-		VertexConsumerProvider.Immediate imm = mc.getBufferBuilders().getEntityVertexConsumers();
-		VertexConsumer vc = imm.getBuffer(RenderLayers.lines());
+		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 
 		boolean playersOnly = hb.boolVal("Players only");
 		double range = hb.numVal("Range");
@@ -65,11 +68,8 @@ public class HitboxRenderer {
 		int baseColor = hb.colorVal("Color");
 		int hitColor = hb.colorVal("Hit color");
 		long flash = (long) hb.numVal("Hit flash");
-
-		ms.push();
-		ms.translate(-cam.x, -cam.y, -cam.z);
-
 		long now = System.currentTimeMillis();
+
 		for (Entity e : mc.world.getEntities()) {
 			if (e == mc.player) continue;
 			if (playersOnly) {
@@ -87,15 +87,8 @@ public class HitboxRenderer {
 			Box box = e.getBoundingBox();
 			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, 1.5f);
 		}
-
-		ms.pop();
-		imm.draw(RenderLayers.lines());
 	}
 
-	/**
-	 * Records the attacked entity (for the hit flash) and spawns particles.
-	 * Wired to the attack-entity callback.
-	 */
 	public ActionResult onAttack(PlayerEntity player, World world, Hand hand, Entity entity, EntityHitResult hit) {
 		Module hb = ModuleManager.INSTANCE.find("Hitboxes");
 		if (hb != null && hb.isEnabled()) {
