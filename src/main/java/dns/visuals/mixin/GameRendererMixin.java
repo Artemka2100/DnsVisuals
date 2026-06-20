@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
 	@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
-	private void dnsvisuals$zoom(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Double> cir) {
+	private void dnsvisuals$zoom(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {
 		Module zoom = ModuleManager.INSTANCE.find("Zoom");
 		if (zoom == null || !zoom.isEnabled()) return;
 		int key = zoom.keyVal("Key");
@@ -24,6 +24,6 @@ public class GameRendererMixin {
 		if (!InputUtil.isKeyPressed(mc.getWindow().getHandle(), key)) return;
 		double factor = zoom.numVal("Factor");
 		if (factor < 1.0) factor = 1.0;
-		cir.setReturnValue(cir.getReturnValueD() / factor);
+		cir.setReturnValue((float) (cir.getReturnValueF() / factor));
 	}
 }
