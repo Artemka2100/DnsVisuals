@@ -8,6 +8,7 @@ import dns.visuals.setting.ModeSetting;
 import dns.visuals.setting.SliderSetting;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.ColorUtil;
+import dns.visuals.util.CooldownTracker;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -17,6 +18,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -301,6 +303,86 @@ public class ModuleManager {
 						ctx.fill(x + 5, by, x + 5 + (int) (bw * frac), by + 3, hc);
 					}
 					return h;
+				}));
+
+		// 9. Coordinates -> XYZ position
+		reg(new Module("Coordinates", "Your XYZ position", Category.HUD)
+				.add(new BooleanSetting("Label", "Show 'XYZ:' prefix", true))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new BooleanSetting("Dimension coords", "Show other-dimension XZ", false))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.hud((ctx, x, y, self) -> {
+					ClientPlayerEntity p = MinecraftClient.getInstance().player;
+					if (p == null) return 0;
+					int px = (int) Math.floor(p.getX());
+					int py = (int) Math.floor(p.getY());
+					int pz = (int) Math.floor(p.getZ());
+					boolean shadow = self.boolVal("Shadow");
+					int color = self.colorVal("Color");
+					String text = (self.boolVal("Label") ? "XYZ: " : "") + px + ", " + py + ", " + pz;
+					ctx.drawText(tr(), text, x, y, color, shadow);
+					int used = tr().fontHeight;
+					if (self.boolVal("Dimension coords")) {
+						boolean nether = p.getWorld().getRegistryKey() == World.NETHER;
+						int ox, oz;
+						String tag;
+						if (nether) { ox = px * 8; oz = pz * 8; tag = "OW"; }
+						else { ox = px / 8; oz = pz / 8; tag = "Nether"; }
+						String line2 = tag + ": " + ox + ", " + oz;
+						ctx.drawText(tr(), line2, x, y + used + 1, 0xFFAAAAAA, shadow);
+						used += tr().fontHeight + 1;
+					}
+					return used;
+				}));
+
+		// 10. Ping -> latency to the server
+		reg(new Module("Ping", "Your latency to the server", Category.HUD)
+				.add(new BooleanSetting("Label", "Show 'Ping:' prefix", true))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new BooleanSetting("Color by value", "Green/yellow/red", true))
+				.add(new ColorSetting("Color", "Static color", 255, 255, 255, 255))
+				.hud((ctx, x, y, self) -> {
+					MinecraftClient mc = MinecraftClient.getInstance();
+					int ping = 0;
+					if (mc.getNetworkHandler() != null && mc.player != null) {
+						var e = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
+						if (e != null) ping = e.getLatency();
+					}
+					String text = (self.boolVal("Label") ? "Ping: " : "") + ping + "ms";
+					int color = self.colorVal("Color");
+					if (self.boolVal("Color by value")) {
+						color = ping < 60 ? 0xFF55FF55 : ping < 150 ? 0xFFFFFF55 : 0xFFFF5555;
+					}
+					ctx.drawText(tr(), text, x, y, color, self.boolVal("Shadow"));
+					return tr().fontHeight;
+				}));
+
+		// 11. CooldownList -> item cooldowns as text (no icons)
+		reg(new Module("CooldownList", "Item cooldowns (text only)", Category.HUD)
+				.add(new BooleanSetting("Label", "Show 'Cooldowns:' header", true))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new BooleanSetting("Hide when empty", "Hide if nothing cooling", true))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.add(new ColorSetting("Accent", "Header color", 255, 122, 0, 255))
+				.hud((ctx, x, y, self) -> {
+					java.util.List<String> lines = CooldownTracker.poll();
+					if (lines.isEmpty() && self.boolVal("Hide when empty")) return 0;
+					boolean shadow = self.boolVal("Shadow");
+					int dy = y;
+					if (self.boolVal("Label")) {
+						ctx.drawText(tr(), "Cooldowns:", x, dy, self.colorVal("Accent"), shadow);
+						dy += tr().fontHeight + 1;
+					}
+					if (lines.isEmpty()) {
+						ctx.drawText(tr(), "none", x, dy, self.colorVal("Color"), shadow);
+						dy += tr().fontHeight + 1;
+					} else {
+						for (String l : lines) {
+							ctx.drawText(tr(), l, x, dy, self.colorVal("Color"), shadow);
+							dy += tr().fontHeight + 1;
+						}
+					}
+					return dy - y;
 				}));
 	}
 
