@@ -4,6 +4,7 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.util.ColorUtil;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -34,7 +35,7 @@ public class BlockOutlineRenderer {
 
 	private BlockOutlineRenderer() {}
 
-	public boolean onBlockOutline(WorldRenderContext wrc, WorldRenderContext.BlockOutlineContext boc) {
+	public boolean onBlockOutline(WorldRenderContext wrc, WorldRenderEvents.BlockOutlineContext boc) {
 		Module m = ModuleManager.INSTANCE.find("BlockOutline");
 		if (m == null || !m.isEnabled()) return true; // let vanilla draw
 		if (mc.world == null) return true;
