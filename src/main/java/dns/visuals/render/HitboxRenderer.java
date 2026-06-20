@@ -19,6 +19,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
@@ -28,8 +29,9 @@ import net.minecraft.world.World;
  * Renders entity hitboxes and spawns hit particles (Minecraft 1.21.11 render APIs).
  *
  * Important: we draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let
- * the world renderer flush it. Grabbing a fresh immediate and calling draw() ourselves mid-frame
- * does not reliably show up, which is why boxes were previously invisible.
+ * the world renderer flush it. Boxes are positioned at the entity's INTERPOLATED render position
+ * (lastRenderX/Y/Z lerped by tickDelta) to match the smoothly-rendered model. Using the raw
+ * bounding box (last tick position) made boxes visibly drift away from moving entities.
  */
 public class HitboxRenderer {
 	public static final HitboxRenderer INSTANCE = new HitboxRenderer();
@@ -70,6 +72,9 @@ public class HitboxRenderer {
 		long flash = (long) hb.numVal("Hit flash");
 		long now = System.currentTimeMillis();
 
+		// Interpolation factor for this frame so boxes track the smoothly-rendered model.
+		double td = mc.getRenderTickCounter().getTickDelta(false);
+
 		for (Entity e : mc.world.getEntities()) {
 			if (e == mc.player) continue;
 			if (playersOnly) {
@@ -84,7 +89,12 @@ public class HitboxRenderer {
 				color = hitColor;
 			}
 
-			Box box = e.getBoundingBox();
+			// Offset the (last-tick) bounding box to the interpolated render position.
+			double ix = MathHelper.lerp(td, e.lastRenderX, e.getX());
+			double iy = MathHelper.lerp(td, e.lastRenderY, e.getY());
+			double iz = MathHelper.lerp(td, e.lastRenderZ, e.getZ());
+			Box box = e.getBoundingBox().offset(ix - e.getX(), iy - e.getY(), iz - e.getZ());
+
 			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, 1.5f);
 		}
 	}
