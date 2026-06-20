@@ -5,36 +5,126 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.render.RenderTickCounter;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * Draws all enabled HUD modules in a vertical stack at the top-left of the screen.
- * Called from InGameHudMixin (TAIL of InGameHud#render); HudRenderCallback was removed in 1.21.x.
+ * Draws enabled HUD modules. Each element has its own movable position. While the chat screen is
+ * open, elements can be dragged (handled by ChatScreenMixin -> mouseClicked/Dragged/Released).
+ * Called from InGameHudMixin (TAIL of InGameHud#render), which still runs behind an open chat.
  */
 public final class HudManager {
 	private HudManager() {}
 
+	// element name -> live [x, y]
+	private static final Map<String, int[]> POS = new HashMap<>();
+	// element name -> default [x, y]
+	private static final Map<String, int[]> DEFAULTS = new LinkedHashMap<>();
+	static {
+		DEFAULTS.put("Watermark", new int[]{4, 4});
+		DEFAULTS.put("FPS", new int[]{4, 20});
+		DEFAULTS.put("CPS", new int[]{4, 32});
+		DEFAULTS.put("TPS", new int[]{4, 44});
+		DEFAULTS.put("ArmorHUD", new int[]{4, 56});
+		DEFAULTS.put("Effects", new int[]{4, 110});
+		DEFAULTS.put("PlayerInfo", new int[]{-1, -1}); // centered lazily once screen size known
+	}
+
+	// last drawn screen bounds per element, for drag hit-testing
+	private static final Map<String, int[]> bounds = new HashMap<>();
+	private static String dragging = null;
+	private static int dragDX, dragDY;
+
+	private static int[] pos(String name) {
+		int[] p = POS.get(name);
+		if (p == null) {
+			int[] d = DEFAULTS.getOrDefault(name, new int[]{4, 4});
+			p = new int[]{d[0], d[1]};
+			POS.put(name, p);
+		}
+		return p;
+	}
+
 	public static void renderHud(DrawContext ctx, RenderTickCounter tickCounter) {
 		MinecraftClient mc = MinecraftClient.getInstance();
-		if (mc.options.hudHidden || mc.player == null || mc.currentScreen != null) return;
+		if (mc.options.hudHidden || mc.player == null) return;
+		boolean editing = mc.currentScreen instanceof ChatScreen;
+		if (mc.currentScreen != null && !editing) return;
 
-		int x = 4;
-		int y = 4;
+		int sw = mc.getWindow().getScaledWidth();
+		int sh = mc.getWindow().getScaledHeight();
+
+		int[] piDef = DEFAULTS.get("PlayerInfo");
+		if (piDef[0] < 0) {
+			piDef[0] = sw / 2 - 45;
+			piDef[1] = sh / 2 + 18;
+		}
+
+		bounds.clear();
 		for (Module m : ModuleManager.INSTANCE.byCategory(Category.HUD)) {
 			if (!m.isEnabled() || m.hudRenderer == null) continue;
 
-			double scale = 1.0;
-			if (m.get("Scale") != null) scale = m.numVal("Scale");
+			// ArrayList positions itself with absolute screen coordinates -> no translation
+			if (m.name.equals("ArrayList")) {
+				m.hudRenderer.render(ctx, 0, 0, m);
+				continue;
+			}
 
+			int[] p = pos(m.name);
 			var matrices = ctx.getMatrices();
 			matrices.pushMatrix();
-			matrices.translate((float) x, (float) y);
-			if (scale != 1.0) matrices.scale((float) scale, (float) scale);
-
+			matrices.translate((float) p[0], (float) p[1]);
 			int consumed = m.hudRenderer.render(ctx, 0, 0, m);
-
 			matrices.popMatrix();
-			y += (int) (consumed * scale) + 3;
+
+			if (consumed > 0) {
+				bounds.put(m.name, new int[]{p[0], p[1], 110, consumed});
+				if (editing) {
+					// orange handle strip on the left edge of each element
+					ctx.fill(p[0] - 3, p[1] - 2, p[0] - 1, p[1] + consumed + 1, 0xFFFF7A00);
+				}
+			}
 		}
+
+		if (editing) {
+			ctx.drawText(mc.textRenderer, "HUD edit: drag elements, close chat to finish",
+					4, sh - 12, 0xFFAAAAAA, true);
+		}
+	}
+
+	// ---- drag API called from ChatScreenMixin ----
+	public static boolean isEditing() {
+		return MinecraftClient.getInstance().currentScreen instanceof ChatScreen;
+	}
+
+	public static boolean mouseClicked(double mx, double my, int button) {
+		if (button != 0) return false;
+		for (Map.Entry<String, int[]> e : bounds.entrySet()) {
+			int[] b = e.getValue();
+			if (mx >= b[0] - 4 && mx <= b[0] + b[2] && my >= b[1] - 2 && my <= b[1] + b[3]) {
+				dragging = e.getKey();
+				int[] p = pos(dragging);
+				dragDX = (int) (mx - p[0]);
+				dragDY = (int) (my - p[1]);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean mouseDragged(double mx, double my) {
+		if (dragging == null) return false;
+		int[] p = pos(dragging);
+		p[0] = Math.max(0, (int) (mx - dragDX));
+		p[1] = Math.max(0, (int) (my - dragDY));
+		return true;
+	}
+
+	public static void mouseReleased() {
+		dragging = null;
 	}
 }
