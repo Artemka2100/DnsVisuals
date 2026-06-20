@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "dnsvisuals",
+	"version": "${version}",
+	"name": "DnsVisuals",
+	"description": "HUD / visual client: watermark, FPS, CPS, TPS, ArmorHUD, custom crosshair, themes and chat tweaks. Right Shift opens the ClickGUI.",
+	"authors": ["You"],
+	"contact": {},
+	"license": "MIT",
+	"icon": "assets/dnsvisuals/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dns.visuals.DnsVisuals"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.15.0",
+		"fabric-api": "*",
+		"minecraft": "~1.20.4",
+		"java": ">=17"
+	}
+}
