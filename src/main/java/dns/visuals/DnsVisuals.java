@@ -4,6 +4,7 @@ import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
+import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.CpsTracker;
@@ -33,7 +34,10 @@ public class DnsVisuals implements ClientModInitializer {
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
 		// recommended hook for drawing lines/overlays (vanilla draws hitboxes here too).
-		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> HitboxRenderer.INSTANCE.onWorldRender());
+		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> {
+			HitboxRenderer.INSTANCE.onWorldRender();
+			EspRenderer.INSTANCE.onWorldRender();
+		});
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
 		// Record the most recently attacked entity for the PlayerInfo HUD panel.
