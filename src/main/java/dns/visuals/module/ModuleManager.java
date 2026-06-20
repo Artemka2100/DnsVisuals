@@ -218,6 +218,16 @@ public class ModuleManager {
 				.add(new SliderSetting("Blend", "Blend with vanilla", 60, 0, 100, 5, "%"))
 				.add(new BooleanSetting("Affect fog", "Tint fog too", true))
 				.add(new ModeSetting("When", "Apply during", "Always", "Always", "Day", "Night")));
+
+		reg(new Module("Hitboxes", "Entity boxes + hit color & particles", Category.RENDER)
+				.add(new ColorSetting("Color", "Normal box color", 255, 255, 255, 160))
+				.add(new ColorSetting("Hit color", "Color while hitting", 255, 60, 60, 220))
+				.add(new SliderSetting("Range", "Max distance", 24, 4, 64, 1, "m"))
+				.add(new SliderSetting("Hit flash", "Hit color duration", 300, 50, 1000, 50, "ms"))
+				.add(new BooleanSetting("Players only", "Only show players", false))
+				.add(new BooleanSetting("Particles", "Particles on hit", true))
+				.add(new ModeSetting("Particle", "Particle type", "Crit", "Crit", "Flame", "Heart", "Cloud", "Angry"))
+				.add(new SliderSetting("Particle count", "Particles per hit", 8, 1, 30, 1, "")));
 	}
 
 	// =========================== INTERFACE ===========================
