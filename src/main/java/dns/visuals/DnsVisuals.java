@@ -5,6 +5,7 @@ import dns.visuals.gui.ClickGuiScreen;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.HitboxRenderer;
+import dns.visuals.util.AttackTracker;
 import dns.visuals.util.CpsTracker;
 import dns.visuals.util.TpsTracker;
 import net.fabricmc.api.ClientModInitializer;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.ActionResult;
 import org.lwjgl.glfw.GLFW;
 
 /** Mod entrypoint. Wires up modules, config, CPS/TPS tracking, world visuals and the GUI open key. */
@@ -33,6 +35,12 @@ public class DnsVisuals implements ClientModInitializer {
 		// recommended hook for drawing lines/overlays (vanilla draws hitboxes here too).
 		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> HitboxRenderer.INSTANCE.onWorldRender());
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
+
+		// Record the most recently attacked entity for the PlayerInfo HUD panel.
+		AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+			AttackTracker.record(entity);
+			return ActionResult.PASS;
+		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
