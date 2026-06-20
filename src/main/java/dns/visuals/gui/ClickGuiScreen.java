@@ -21,9 +21,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The black/orange ClickGUI. Left tab column + module list with expandable settings.
+ * The black/orange ClickGUI. Two layouts, switched by Theme -> "Menu style":
+ *  - Panel   : left tab column + module list with expandable settings.
+ *  - Columns : cheat-style category columns, each module is a toggle button (no checkbox),
+ *              category name labelled on top; right-click a function to expand its settings.
+ *
+ * In both layouts:
  *  - Left-click a module  -> toggle it (animated)
- *  - Right-click a module -> open/close its settings (animated)
+ *  - Right-click a module -> open/close its settings
  *  - Settings support: toggle, slider, mode (L=next / R=prev), color (R/G/B sliders), keybind.
  */
 public class ClickGuiScreen extends Screen {
@@ -74,6 +79,11 @@ public class ClickGuiScreen extends Screen {
 		return theme != null ? theme.colorVal("Background") : 0xEB101010;
 	}
 
+	private boolean columnsLayout() {
+		Module theme = ModuleManager.INSTANCE.find("Theme");
+		return theme != null && "Columns".equals(theme.modeVal("Menu style"));
+	}
+
 	private double animSpeed() {
 		Module a = ModuleManager.INSTANCE.find("Animations");
 		return a != null ? a.numVal("Speed") : 12;
@@ -113,9 +123,17 @@ public class ClickGuiScreen extends Screen {
 	@Override
 	public void render(DrawContext ctx, int mouseX, int mouseY, float tickDelta) {
 		double dt = delta();
+		elements.clear();
+
 		Module clickGui = ModuleManager.INSTANCE.find("ClickGUI");
 		if (clickGui == null || clickGui.boolVal("Background dim")) {
-			ctx.fill(0, 0, this.width, this.height, 0x66000000); // light even dim (was vanilla renderBackground - too dark)
+			ctx.fill(0, 0, this.width, this.height, 0x66000000); // light even dim
+		}
+
+		if (columnsLayout()) {
+			renderColumns(ctx, mouseX, mouseY, dt);
+			super.render(ctx, mouseX, mouseY, tickDelta);
+			return;
 		}
 
 		int accent = accent();
@@ -132,7 +150,6 @@ public class ClickGuiScreen extends Screen {
 		// tab column
 		ctx.fill(guiX, guiY + 18, guiX + tabW, guiY + guiH, 0xFF131313);
 		int ty = guiY + 24;
-		elements.clear();
 		for (Category c : Category.values()) {
 			boolean sel = c == selected;
 			boolean hover = mouseX >= guiX && mouseX <= guiX + tabW && mouseY >= ty && mouseY <= ty + rowH;
@@ -204,6 +221,72 @@ public class ClickGuiScreen extends Screen {
 
 		ctx.disableScissor();
 		super.render(ctx, mouseX, mouseY, tickDelta);
+	}
+
+	/** Cheat-style columns: one column per category, modules are toggle buttons. */
+	private void renderColumns(DrawContext ctx, int mouseX, int mouseY, double dt) {
+		int accent = accent();
+		Category[] cats = Category.values();
+		int n = cats.length;
+		int colW = 108;
+		int gap = 6;
+		int bh = 16; // button height
+		int totalW = n * colW + (n - 1) * gap;
+		int startX = Math.max(6, (width - totalW) / 2);
+		int top = 40;
+		int bottom = height - 14;
+
+		ctx.drawText(textRenderer, Text.literal("Dns").append(Text.literal("Visuals")), startX, 18, accent, true);
+		ctx.drawText(textRenderer, Text.literal("cheat menu"), startX + textRenderer.getWidth("DnsVisuals") + 6, 19, 0xFF777777, false);
+
+		for (int ci = 0; ci < n; ci++) {
+			Category c = cats[ci];
+			int cx = startX + ci * (colW + gap);
+
+			// category header
+			ctx.fill(cx, top, cx + colW, top + bh, 0xFF0C0C0C);
+			ctx.fill(cx, top, cx + colW, top + 1, accent);
+			ctx.fill(cx, top + bh - 1, cx + colW, top + bh, accent);
+			int tw = textRenderer.getWidth(c.title);
+			ctx.drawText(textRenderer, Text.literal(c.title), cx + (colW - tw) / 2, top + 4, accent, false);
+
+			ctx.enableScissor(cx, top + bh, cx + colW, bottom);
+			int my = top + bh + 3 - (int) scroll;
+
+			for (Module m : ModuleManager.INSTANCE.byCategory(c)) {
+				m.toggleAnim = AnimationUtil.approach(m.toggleAnim, m.isEnabled() ? 1 : 0, animSpeed(), dt);
+				m.openAnim = AnimationUtil.approach(m.openAnim, m.settingsOpen ? 1 : 0, animSpeed(), dt);
+				boolean hover = mouseX >= cx && mouseX <= cx + colW && mouseY >= my && mouseY <= my + bh
+						&& mouseY >= top + bh && mouseY <= bottom;
+
+				int btnBg = ColorUtil.blend(0xFF161616, ColorUtil.withAlpha(accent, 90), ease(m.toggleAnim));
+				if (hover) btnBg = ColorUtil.blend(btnBg, 0xFF2A2A2A, 0.5);
+				ctx.fill(cx, my, cx + colW, my + bh, btnBg);
+				if (m.toggleAnim > 0.01) ctx.fill(cx, my, cx + 2, my + bh, accent);
+
+				int nameColor = ColorUtil.blend(0xFFCCCCCC, accent, ease(m.toggleAnim));
+				ctx.drawText(textRenderer, Text.literal(m.name), cx + 6, my + 4, nameColor, false);
+				ctx.drawText(textRenderer, Text.literal(m.settingsOpen ? "-" : "+"), cx + colW - 9, my + 4, 0xFF777777, false);
+
+				final Module fm = m;
+				Element row = new Element(cx, my, cx + colW, my + bh);
+				row.onLeft = mx -> fm.toggle();
+				row.onRight = mx -> fm.settingsOpen = !fm.settingsOpen;
+				elements.add(row);
+				my += bh + 2;
+
+				if (m.settingsOpen) {
+					for (var s : m.settings) {
+						my = drawSetting(ctx, s, cx + 4, my, colW - 8, mouseX, mouseY);
+					}
+					my += 4;
+				}
+			}
+			ctx.disableScissor();
+		}
+
+		ctx.drawText(textRenderer, Text.literal("Left-click = toggle, right-click = settings, scroll to move"),
+				startX, height - 11, 0xFF666666, false);
 	}
 
 	private int settingsHeight(Module m) {
