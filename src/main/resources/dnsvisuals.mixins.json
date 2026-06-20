@@ -4,8 +4,10 @@
 	"package": "dns.visuals.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"EntityMixin",
 		"GameRendererMixin",
-		"InGameHudMixin"
+		"InGameHudMixin",
+		"MinecraftClientMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
