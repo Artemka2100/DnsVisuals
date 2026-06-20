@@ -11,6 +11,7 @@ import dns.visuals.render.HitboxRenderer;
 import dns.visuals.render.Waypoint;
 import dns.visuals.render.WaypointHud;
 import dns.visuals.setting.BooleanSetting;
+import dns.visuals.setting.ModeSetting;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.AutoTool;
 import dns.visuals.util.CpsTracker;
@@ -50,6 +51,18 @@ public class DnsVisuals implements ClientModInitializer {
 		Module sprint = new Module("Sprint", "Automatically keep sprinting", Category.MISC);
 		sprint.add(new BooleanSetting("Keep sprint", "Sprint without holding forward", false));
 		ModuleManager.INSTANCE.all().add(sprint);
+
+		// Time: client-side visual time-of-day override (handled by WorldMixin).
+		Module time = new Module("Time", "Override the time of day (visual only)", Category.RENDER);
+		time.add(new ModeSetting("Time", "Time of day to lock", "Day",
+				"Morning", "Day", "Noon", "Sunset", "Night", "Midnight"));
+		ModuleManager.INSTANCE.all().add(time);
+
+		// Weather: client-side visual weather override (handled by WorldMixin).
+		Module weather = new Module("Weather", "Override the weather (visual only)", Category.RENDER);
+		weather.add(new ModeSetting("Weather", "Weather to show", "Clear",
+				"Clear", "Rain", "Thunder"));
+		ModuleManager.INSTANCE.all().add(weather);
 
 		ConfigManager.load();
 
