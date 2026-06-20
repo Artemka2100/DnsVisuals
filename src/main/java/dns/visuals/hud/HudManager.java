@@ -34,7 +34,10 @@ public final class HudManager {
 		DEFAULTS.put("CPS", new int[]{4, 32});
 		DEFAULTS.put("TPS", new int[]{4, 44});
 		DEFAULTS.put("ArmorHUD", new int[]{4, 56});
-		DEFAULTS.put("Effects", new int[]{4, 110});
+		DEFAULTS.put("Coordinates", new int[]{4, 110});
+		DEFAULTS.put("Ping", new int[]{4, 124});
+		DEFAULTS.put("CooldownList", new int[]{4, 138});
+		DEFAULTS.put("Effects", new int[]{4, 170});
 		DEFAULTS.put("PlayerInfo", new int[]{-1, -1}); // centered lazily once screen size known
 	}
 
