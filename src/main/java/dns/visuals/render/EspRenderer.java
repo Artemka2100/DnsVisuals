@@ -1,6 +1,5 @@
 package dns.visuals.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
@@ -78,9 +77,16 @@ public class EspRenderer {
 		ms.translate(-cam.x, -cam.y, -cam.z);
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
-		// proj * modelView for screen projection of nametags. WorldRenderContext no longer exposes
-		// projectionMatrix() in 1.21.11, so read the current projection from RenderSystem.
-		Matrix4f mvp = new Matrix4f(RenderSystem.getProjectionMatrix()).mul(modelView);
+		// proj * modelView for screen projection of nametags. Neither WorldRenderContext nor
+		// RenderSystem expose the projection matrix in 1.21.11, so we rebuild a perspective matrix
+		// from the current FOV + aspect ratio. Near/far don't affect screen x/y, so any sane values
+		// are fine here.
+		float fovDeg = mc.gameRenderer.getFov(camera, 1.0f, true);
+		int fbW = mc.getWindow().getFramebufferWidth();
+		int fbH = mc.getWindow().getFramebufferHeight();
+		float aspect = fbH == 0 ? 1f : (float) fbW / (float) fbH;
+		Matrix4f proj = new Matrix4f().perspective((float) Math.toRadians(fovDeg), aspect, 0.05f, 1000.0f);
+		Matrix4f mvp = new Matrix4f(proj).mul(modelView);
 		int sw = mc.getWindow().getScaledWidth();
 		int sh = mc.getWindow().getScaledHeight();
 
