@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Zoom: shrinks FOV while the Zoom module's key is held. Also captures the FOV for ESP nametags. Plus NoRender hooks. */
+/** Zoom: shrinks FOV while the Zoom module's key is held. Also captures the FOV for ESP nametags. Plus NoRender + AspectRatio hooks. */
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
 	@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
@@ -53,5 +53,22 @@ public class GameRendererMixin {
 	private void dnsvisuals$noHand(float tickProgress, boolean sleeping, Matrix4f positionMatrix, CallbackInfo ci) {
 		Module m = ModuleManager.INSTANCE.find("NoRender");
 		if (m != null && m.isEnabled() && m.boolVal("Hand")) ci.cancel();
+	}
+
+	/**
+	 * AspectRatio: stretch the rendered world by scaling clip space. scaleLocal left-multiplies the
+	 * projection so the final NDC is stretched (screen stretch), not a zoom. HUD uses a separate
+	 * ortho projection so it is unaffected. require = 0: never break the build if the target shifts.
+	 */
+	@Inject(method = "getBasicProjectionMatrix", at = @At("RETURN"), cancellable = true, require = 0)
+	private void dnsvisuals$aspectRatio(float fovDegrees, CallbackInfoReturnable<Matrix4f> cir) {
+		Module m = ModuleManager.INSTANCE.find("AspectRatio");
+		if (m == null || !m.isEnabled()) return;
+		float sx = (float) m.numVal("Stretch X");
+		float sy = (float) m.numVal("Stretch Y");
+		if (sx == 1f && sy == 1f) return;
+		Matrix4f mat = cir.getReturnValue();
+		mat.scaleLocal(sx, sy, 1f);
+		cir.setReturnValue(mat);
 	}
 }
