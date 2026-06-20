@@ -3,6 +3,7 @@ package dns.visuals.mixin;
 import dns.visuals.hud.HudManager;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
+import dns.visuals.render.EspRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
@@ -18,6 +19,7 @@ public class InGameHudMixin {
 
 	@Inject(method = "render", at = @At("TAIL"))
 	private void dnsvisuals$hud(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
+		EspRenderer.INSTANCE.renderOverlay(ctx);
 		HudManager.renderHud(ctx, tickCounter);
 	}
 
