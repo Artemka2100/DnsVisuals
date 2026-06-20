@@ -1,13 +1,32 @@
-- name: Set up JDK 21
-  uses: actions/setup-java@v4
-  with:
-    distribution: temurin
-    java-version: '21'
+name: Build DnsVisuals
 
-- name: Set up Gradle
-  uses: gradle/actions/setup-gradle@v3
-  with:
-    gradle-version: '8.14'
+on:
+  push:
+  workflow_dispatch:
 
-- name: Build
-  run: gradle build --no-daemon --stacktrace
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.14'
+
+      - name: Build
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsvisuals-jar
+          path: build/libs/*.jar
