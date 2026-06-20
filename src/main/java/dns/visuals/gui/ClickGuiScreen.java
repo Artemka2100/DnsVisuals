@@ -22,7 +22,8 @@ import java.util.List;
 
 /**
  * The black/orange ClickGUI. Two layouts, switched by Theme -> "Menu style":
- *  - Panel   : left tab column + module list with expandable settings.
+ *  - Panel   : left tab column + module list. Each module row has a checkbox on the left;
+ *              left-click toggles, right-click opens its settings.
  *  - Columns : cheat-style category columns, each module is a toggle button (no checkbox),
  *              category name labelled on top; right-click a function to expand its settings.
  *
@@ -190,8 +191,23 @@ public class ClickGuiScreen extends Screen {
 			if (rowHover) rowBg = ColorUtil.blend(rowBg, 0xFF2A2A2A, 0.5 * m.hoverAnim);
 			ctx.fill(mx0, y, mx0 + mxw, y + rowH, rowBg);
 
+			// checkbox on the left (Panel layout only)
+			int cbSize = 9;
+			int cbX = mx0 + 5;
+			int cbY = y + (rowH - cbSize) / 2;
+			ctx.fill(cbX, cbY, cbX + cbSize, cbY + cbSize, 0xFF202020);
+			ctx.fill(cbX, cbY, cbX + cbSize, cbY + 1, 0xFF555555);
+			ctx.fill(cbX, cbY + cbSize - 1, cbX + cbSize, cbY + cbSize, 0xFF555555);
+			ctx.fill(cbX, cbY, cbX + 1, cbY + cbSize, 0xFF555555);
+			ctx.fill(cbX + cbSize - 1, cbY, cbX + cbSize, cbY + cbSize, 0xFF555555);
+			if (m.toggleAnim > 0.01) {
+				int inset = 2;
+				int box = ColorUtil.blend(0xFF202020, accent, ease(m.toggleAnim));
+				ctx.fill(cbX + inset, cbY + inset, cbX + cbSize - inset, cbY + cbSize - inset, box);
+			}
+
 			int nameColor = ColorUtil.blend(0xFFBBBBBB, accent, ease(m.toggleAnim));
-			ctx.drawText(textRenderer, Text.literal(m.name), mx0 + 6, y + 5, nameColor, false);
+			ctx.drawText(textRenderer, Text.literal(m.name), mx0 + 19, y + 5, nameColor, false);
 
 			// little settings caret on the right
 			ctx.drawText(textRenderer, Text.literal(m.settingsOpen ? "-" : "+"), mx0 + mxw - 10, y + 5, 0xFF777777, false);
