@@ -11,6 +11,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
@@ -69,7 +70,7 @@ public class ModuleManager {
 				.hud((ctx, x, y, self) -> {
 					boolean compact = self.modeVal("Style").equals("Compact");
 					String text = compact ? "DnsV" : "DnsVisuals";
-					if (self.boolVal("Show version")) text += " v1.0";
+					if (self.boolVal("Show version")) text += " v1.2";
 					int color = self.boolVal("Rainbow")
 							? ColorUtil.rainbow(self.numVal("Rainbow speed"), 0)
 							: self.colorVal("Color");
@@ -152,8 +153,9 @@ public class ModuleManager {
 					int color = self.colorVal("Color");
 					boolean shadow = self.boolVal("Shadow");
 					int dx = x, dy = y, used = 0;
+					EquipmentSlot[] slots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
 					for (int i = 3; i >= 0; i--) {
-						ItemStack piece = p.getInventory().armor.get(i);
+						ItemStack piece = p.getEquippedStack(slots[i]);
 						String line;
 						if (piece.isEmpty()) {
 							line = names[i] + ": -";
@@ -227,7 +229,7 @@ public class ModuleManager {
 				.add(new BooleanSetting("Players only", "Only show players", false))
 				.add(new BooleanSetting("Particles", "Particles on hit", true))
 				.add(new ModeSetting("Particle", "Particle type", "Crit", "Crit", "Flame", "Heart", "Cloud", "Angry"))
-				.add(new SliderSetting("Particle count", "Particles per hit", 8, 1, 30, 1, "")));
+				.add(new SliderSetting("Particle count", "Particles per hit", 16, 1, 50, 1, "")));
 	}
 
 	// =========================== INTERFACE ===========================
@@ -235,7 +237,7 @@ public class ModuleManager {
 		reg(new Module("ClickGUI", "This menu", Category.INTERFACE)
 				.add(new KeybindSetting("Open key", "Key to open menu", GLFW.GLFW_KEY_RIGHT_SHIFT))
 				.add(new SliderSetting("Scale", "Menu scale", 1.0, 0.7, 1.5, 0.05, "x"))
-				.add(new BooleanSetting("Background dim", "Darken screen", true))
+				.add(new BooleanSetting("Background dim", "Darken screen", false))
 				.add(new BooleanSetting("Hover glow", "Highlight on hover", true))
 				.add(new ModeSetting("Layout", "Tab placement", "Left", "Left", "Top")));
 
