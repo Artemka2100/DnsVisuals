@@ -15,10 +15,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * The vanilla method returns a packed 0xRRGGBB int; we lerp it towards the configured color by the
  * "Blend" percentage. "When" restricts the override to Day/Night based on the (possibly Time-module
  * overridden) world time.
+ *
+ * NOTE: In 1.21.11 the target method name may differ, so this inject is marked require = 0:
+ * if no matching target is found the mod simply skips the sky tint instead of crashing the client.
  */
 @Mixin(ClientWorld.class)
 public abstract class ClientWorldMixin {
-	@Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true)
+	@Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true, require = 0)
 	private void dnsvisuals$skyColor(Vec3d pos, float tickDelta, CallbackInfoReturnable<Integer> cir) {
 		Module m = ModuleManager.INSTANCE.find("SkyColor");
 		if (m == null || !m.isEnabled() || !m.boolVal("Override")) return;
