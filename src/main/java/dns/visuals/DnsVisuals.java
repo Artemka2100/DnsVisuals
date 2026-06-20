@@ -29,8 +29,8 @@ public class DnsVisuals implements ClientModInitializer {
 		ModuleManager.INSTANCE.init();
 		ConfigManager.load();
 
-		WorldRenderEvents.AFTER_TRANSLUCENT.register(HitboxRenderer::onWorldRender);
-		AttackEntityCallback.EVENT.register(HitboxRenderer::onAttack);
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> HitboxRenderer.INSTANCE.onWorldRender());
+		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
