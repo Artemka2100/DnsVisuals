@@ -2,6 +2,7 @@ package dns.visuals;
 
 import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
+import dns.visuals.gui.HudEditorScreen;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.EspRenderer;
@@ -51,12 +52,17 @@ public class DnsVisuals implements ClientModInitializer {
 			return ActionResult.PASS;
 		});
 
-		// Intercept the .goto chat command client-side (cancel sending it to the server).
-		ClientSendMessageEvents.ALLOW_CHAT.register(message -> !Waypoint.handleCommand(message));
-
-		// HUD drag-to-move is handled in ScreenMixin: while the chat screen is open, mouse
-		// click/drag/release are routed to HudManager so HUD elements can be repositioned.
-		// (ScreenMouseEvents callback signatures changed in 1.21.11, so a mixin is used instead.)
+		// Intercept client-side chat commands (cancel sending them to the server):
+		//  .hud  -> open the HUD editor screen (drag elements to reposition them)
+		//  .goto -> waypoint commands handled by Waypoint
+		ClientSendMessageEvents.ALLOW_CHAT.register(message -> {
+			if (message.trim().equalsIgnoreCase(".hud")) {
+				MinecraftClient mc = MinecraftClient.getInstance();
+				mc.send(() -> mc.setScreen(new HudEditorScreen()));
+				return false;
+			}
+			return !Waypoint.handleCommand(message);
+		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
