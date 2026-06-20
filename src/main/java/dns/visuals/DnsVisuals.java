@@ -6,6 +6,7 @@ import dns.visuals.gui.HudEditorScreen;
 import dns.visuals.module.Category;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
+import dns.visuals.render.Ambient;
 import dns.visuals.render.BlockOutlineRenderer;
 import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
@@ -13,6 +14,7 @@ import dns.visuals.render.JumpCircle;
 import dns.visuals.render.Waypoint;
 import dns.visuals.render.WaypointHud;
 import dns.visuals.setting.BooleanSetting;
+import dns.visuals.setting.ColorSetting;
 import dns.visuals.setting.ModeSetting;
 import dns.visuals.setting.SliderSetting;
 import dns.visuals.util.AttackTracker;
@@ -77,6 +79,34 @@ public class DnsVisuals implements ClientModInitializer {
 				"End rod", "Flame", "Crit", "Cloud", "Note", "Happy"));
 		ModuleManager.INSTANCE.all().add(jump);
 
+		// AspectRatio: stretch the rendered world horizontally/vertically (handled by GameRendererMixin).
+		Module aspect = new Module("AspectRatio", "Stretch the rendered world", Category.RENDER);
+		aspect.add(new SliderSetting("Stretch X", "Horizontal stretch", 1.0, 0.5, 2.0, 0.05, "x"));
+		aspect.add(new SliderSetting("Stretch Y", "Vertical stretch", 1.0, 0.5, 2.0, 0.05, "x"));
+		ModuleManager.INSTANCE.all().add(aspect);
+
+		// Ambients: soft floating particles around the player (handled by Ambient.tick).
+		Module ambients = new Module("Ambients", "Floating particles around you", Category.RENDER);
+		ambients.add(new SliderSetting("Density", "Particles per tick", 2, 1, 10, 1, ""));
+		ambients.add(new SliderSetting("Radius", "Spawn radius", 1.5, 0.5, 4.0, 0.1, " blocks"));
+		ambients.add(new SliderSetting("Size", "Particle size", 1.0, 0.3, 3.0, 0.1, "x"));
+		ambients.add(new ColorSetting("Color", "Particle color", 180, 220, 255, 255));
+		ModuleManager.INSTANCE.all().add(ambients);
+
+		// CustomHand: reposition/resize the first-person hand (handled by HeldItemRendererMixin).
+		Module customHand = new Module("CustomHand", "Reposition/resize the first-person hand", Category.RENDER);
+		customHand.add(new SliderSetting("X", "Left/right offset", 0.0, -1.0, 1.0, 0.05, ""));
+		customHand.add(new SliderSetting("Y", "Up/down offset", 0.0, -1.0, 1.0, 0.05, ""));
+		customHand.add(new SliderSetting("Z", "Forward/back offset", 0.0, -1.0, 1.0, 0.05, ""));
+		customHand.add(new SliderSetting("Size", "Hand scale", 1.0, 0.3, 2.5, 0.05, "x"));
+		ModuleManager.INSTANCE.all().add(customHand);
+
+		// CustomSwing: swing speed + alternate swing animation styles (handled by HeldItemRendererMixin + LivingEntityMixin).
+		Module customSwing = new Module("CustomSwing", "Custom swing speed and style", Category.RENDER);
+		customSwing.add(new ModeSetting("Style", "Swing animation", "Vanilla", "Vanilla", "Stab", "Slide", "Spin"));
+		customSwing.add(new SliderSetting("Speed", "Swing speed multiplier", 1.0, 0.5, 4.0, 0.1, "x"));
+		ModuleManager.INSTANCE.all().add(customSwing);
+
 		ConfigManager.load();
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
@@ -128,6 +158,7 @@ public class DnsVisuals implements ClientModInitializer {
 			tickFullbright(mc);
 			tickSprint(mc);
 			AutoTool.tick();
+			Ambient.tick(mc);
 
 			// JumpCircles: fire on the rising edge of leaving the ground with upward velocity.
 			boolean onGround = mc.player.isOnGround();
