@@ -6,6 +6,7 @@ import dns.visuals.gui.HudEditorScreen;
 import dns.visuals.module.Category;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
+import dns.visuals.render.BlockOutlineRenderer;
 import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
 import dns.visuals.render.JumpCircle;
@@ -84,6 +85,10 @@ public class DnsVisuals implements ClientModInitializer {
 			HitboxRenderer.INSTANCE.onWorldRender(context);
 			EspRenderer.INSTANCE.onWorldRender(context);
 		});
+
+		// BlockOutline: replace the vanilla block selection outline with our own when enabled.
+		WorldRenderEvents.BLOCK_OUTLINE.register(BlockOutlineRenderer.INSTANCE::onBlockOutline);
+
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
 		// Record the most recently attacked entity for the PlayerInfo HUD panel.
