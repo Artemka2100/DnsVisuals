@@ -111,13 +111,13 @@ public class DnsVisuals implements ClientModInitializer {
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
 		// recommended hook for drawing lines/overlays (vanilla draws hitboxes here too).
+		// BlockOutline also draws here now: the old BLOCK_OUTLINE event/context was removed in the
+		// 1.21.9 port, so we read the crosshair target instead.
 		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> {
 			HitboxRenderer.INSTANCE.onWorldRender(context);
 			EspRenderer.INSTANCE.onWorldRender(context);
+			BlockOutlineRenderer.INSTANCE.onWorldRender(context);
 		});
-
-		// BlockOutline: replace the vanilla block selection outline with our own when enabled.
-		WorldRenderEvents.BLOCK_OUTLINE.register(BlockOutlineRenderer.INSTANCE::onBlockOutline);
 
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
