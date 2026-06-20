@@ -2,7 +2,6 @@ package dns.visuals;
 
 import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
-import dns.visuals.hud.HudManager;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.EspRenderer;
@@ -17,11 +16,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.ActionResult;
 import org.lwjgl.glfw.GLFW;
@@ -58,18 +54,9 @@ public class DnsVisuals implements ClientModInitializer {
 		// Intercept the .goto chat command client-side (cancel sending it to the server).
 		ClientSendMessageEvents.ALLOW_CHAT.register(message -> !Waypoint.handleCommand(message));
 
-		// HUD drag-to-move: while the chat screen is open, route mouse clicks/drag/release to the
-		// HudManager so HUD elements can be repositioned. Uses stable Fabric Screen events (no mixin).
-		// ScreenMouseEvents has no drag callback, so afterRender drives continuous dragging each frame.
-		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-			if (!(screen instanceof ChatScreen)) return;
-			ScreenMouseEvents.afterMouseClick(screen).register(
-					(scr, mouseX, mouseY, button) -> HudManager.mouseClicked(mouseX, mouseY, button));
-			ScreenMouseEvents.afterMouseRelease(screen).register(
-					(scr, mouseX, mouseY, button) -> HudManager.mouseReleased());
-			ScreenEvents.afterRender(screen).register(
-					(scr, ctx, mouseX, mouseY, tickDelta) -> HudManager.mouseDragged(mouseX, mouseY));
-		});
+		// HUD drag-to-move is handled in ScreenMixin: while the chat screen is open, mouse
+		// click/drag/release are routed to HudManager so HUD elements can be repositioned.
+		// (ScreenMouseEvents callback signatures changed in 1.21.11, so a mixin is used instead.)
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
