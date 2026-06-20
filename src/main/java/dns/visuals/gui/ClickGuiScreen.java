@@ -10,8 +10,10 @@ import dns.visuals.setting.ModeSetting;
 import dns.visuals.setting.SliderSetting;
 import dns.visuals.util.AnimationUtil;
 import dns.visuals.util.ColorUtil;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -45,10 +47,10 @@ public class ClickGuiScreen extends Screen {
 	private KeybindSetting listening = null;
 
 	// per-frame hit-test elements
-	private interface Click { void run(double mx); }
+	private interface ClickAction { void run(double mx); }
 	private static final class Element {
 		int x1, y1, x2, y2;
-		Click onLeft, onRight;
+		ClickAction onLeft, onRight;
 		Element(int x1, int y1, int x2, int y2) { this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2; }
 		boolean has(double mx, double my) { return mx >= x1 && mx <= x2 && my >= y1 && my <= y2; }
 	}
@@ -300,7 +302,10 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(Click click, boolean doubled) {
+		double mouseX = click.x();
+		double mouseY = click.y();
+		int button = click.button();
 		for (int i = elements.size() - 1; i >= 0; i--) {
 			Element e = elements.get(i);
 			if (e.has(mouseX, mouseY)) {
@@ -309,11 +314,12 @@ public class ClickGuiScreen extends Screen {
 				if (button == 0 || button == 1) return true;
 			}
 		}
-		return super.mouseClicked(mouseX, mouseY, button);
+		return super.mouseClicked(click, doubled);
 	}
 
 	@Override
-	public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+		double mouseX = click.x();
 		if (draggingSlider != null) {
 			draggingSlider.setFromFraction((mouseX - dragMinX) / (dragMaxX - dragMinX));
 			return true;
@@ -325,14 +331,14 @@ public class ClickGuiScreen extends Screen {
 			else draggingColor.b = nv;
 			return true;
 		}
-		return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+		return super.mouseDragged(click, offsetX, offsetY);
 	}
 
 	@Override
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	public boolean mouseReleased(Click click) {
 		draggingSlider = null;
 		draggingColor = null;
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(click);
 	}
 
 	@Override
@@ -342,7 +348,8 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	public boolean keyPressed(KeyInput input) {
+		int keyCode = input.key();
 		if (listening != null) {
 			listening.key = (keyCode == GLFW.GLFW_KEY_ESCAPE) ? GLFW.GLFW_KEY_UNKNOWN : keyCode;
 			listening.listening = false;
@@ -355,6 +362,6 @@ public class ClickGuiScreen extends Screen {
 			this.close();
 			return true;
 		}
-		return super.keyPressed(keyCode, scanCode, modifiers);
+		return super.keyPressed(input);
 	}
 }
