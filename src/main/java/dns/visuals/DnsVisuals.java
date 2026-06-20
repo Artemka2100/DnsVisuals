@@ -52,7 +52,7 @@ public class DnsVisuals implements ClientModInitializer {
 		Module clickGui = ModuleManager.INSTANCE.find("ClickGUI");
 		int key = clickGui != null ? clickGui.keyVal("Open key") : GLFW.GLFW_KEY_RIGHT_SHIFT;
 		boolean down = key != GLFW.GLFW_KEY_UNKNOWN
-				&& InputUtil.isKeyPressed(mc.getWindow().getHandle(), key);
+				&& InputUtil.isKeyPressed(mc.getWindow(), key);
 		if (down && !openKeyWasDown && mc.currentScreen == null) {
 			mc.setScreen(new ClickGuiScreen());
 		}
