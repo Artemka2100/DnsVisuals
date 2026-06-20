@@ -36,7 +36,7 @@ public class DnsVisuals implements ClientModInitializer {
 		// recommended hook for drawing lines/overlays (vanilla draws hitboxes here too).
 		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> {
 			HitboxRenderer.INSTANCE.onWorldRender();
-			EspRenderer.INSTANCE.onWorldRender();
+			EspRenderer.INSTANCE.onWorldRender(context);
 		});
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
