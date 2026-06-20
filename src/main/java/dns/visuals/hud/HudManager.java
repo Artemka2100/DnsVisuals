@@ -1,11 +1,11 @@
 package dns.visuals.hud;
 
+import dns.visuals.gui.HudEditorScreen;
 import dns.visuals.module.Category;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.render.RenderTickCounter;
 
 import java.util.HashMap;
@@ -13,9 +13,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Draws enabled HUD modules. Each element has its own movable position. While the chat screen is
- * open, elements can be dragged (handled by ChatScreenMixin -> mouseClicked/Dragged/Released).
- * Called from InGameHudMixin (TAIL of InGameHud#render), which still runs behind an open chat.
+ * Draws enabled HUD modules. Each element has its own movable position.
+ *
+ * Two draw paths:
+ *  - {@link #renderHud} is called from InGameHudMixin (TAIL of InGameHud#render) for the normal,
+ *    no-screen case.
+ *  - {@link #renderEditor} is called from {@link HudEditorScreen} (opened via {@code .hud}); it
+ *    additionally paints drag handles and routes mouse drags to reposition elements.
  */
 public final class HudManager {
 	private HudManager() {}
@@ -49,12 +53,26 @@ public final class HudManager {
 		return p;
 	}
 
+	/** Normal HUD pass from InGameHudMixin. Skipped while any screen is open (the editor draws its own). */
 	public static void renderHud(DrawContext ctx, RenderTickCounter tickCounter) {
 		MinecraftClient mc = MinecraftClient.getInstance();
 		if (mc.options.hudHidden || mc.player == null) return;
-		boolean editing = mc.currentScreen instanceof ChatScreen;
-		if (mc.currentScreen != null && !editing) return;
+		if (mc.currentScreen != null) return;
+		draw(ctx, false);
+	}
 
+	/** Editor pass from HudEditorScreen: draws elements, drag handles and a hint. */
+	public static void renderEditor(DrawContext ctx) {
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (mc.player == null) return;
+		draw(ctx, true);
+		int sh = mc.getWindow().getScaledHeight();
+		ctx.drawText(mc.textRenderer, "HUD edit: drag elements, ESC to finish",
+				4, sh - 12, 0xFFAAAAAA, true);
+	}
+
+	private static void draw(DrawContext ctx, boolean editing) {
+		MinecraftClient mc = MinecraftClient.getInstance();
 		int sw = mc.getWindow().getScaledWidth();
 		int sh = mc.getWindow().getScaledHeight();
 
@@ -89,16 +107,11 @@ public final class HudManager {
 				}
 			}
 		}
-
-		if (editing) {
-			ctx.drawText(mc.textRenderer, "HUD edit: drag elements, close chat to finish",
-					4, sh - 12, 0xFFAAAAAA, true);
-		}
 	}
 
-	// ---- drag API called from ChatScreenMixin ----
+	// ---- drag API called from HudEditorScreen ----
 	public static boolean isEditing() {
-		return MinecraftClient.getInstance().currentScreen instanceof ChatScreen;
+		return MinecraftClient.getInstance().currentScreen instanceof HudEditorScreen;
 	}
 
 	public static boolean mouseClicked(double mx, double my, int button) {
