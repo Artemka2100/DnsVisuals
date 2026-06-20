@@ -6,19 +6,23 @@ import dns.visuals.setting.ColorSetting;
 import dns.visuals.setting.KeybindSetting;
 import dns.visuals.setting.ModeSetting;
 import dns.visuals.setting.SliderSetting;
+import dns.visuals.util.AttackTracker;
 import dns.visuals.util.ColorUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Holds and builds every module. 5 categories, 5 modules each, varied setting types. */
+/** Holds and builds every module. */
 public class ModuleManager {
 	public static final ModuleManager INSTANCE = new ModuleManager();
 
@@ -59,23 +63,41 @@ public class ModuleManager {
 
 	// =========================== HUD ===========================
 	private void buildHud() {
-		// 1. Watermark
-		reg(new Module("Watermark", "Client name on screen", Category.HUD)
-				.add(new ModeSetting("Style", "Text style", "Full", "Full", "Compact"))
+		// 1. Watermark -> "DnsVisuals v1.2 | Developer | beta-test"
+		reg(new Module("Watermark", "Client name banner", Category.HUD)
 				.add(new BooleanSetting("Shadow", "Text shadow", true))
-				.add(new BooleanSetting("Show version", "Append version", true))
-				.add(new BooleanSetting("Rainbow", "Animated color", false))
-				.add(new ColorSetting("Color", "Accent color", 255, 122, 0, 255))
+				.add(new BooleanSetting("Background", "Panel behind text", true))
+				.add(new BooleanSetting("Rainbow", "Animate name color", false))
 				.add(new SliderSetting("Rainbow speed", "Hue cycle speed", 1.0, 0.1, 4.0, 0.1, "x"))
+				.add(new ColorSetting("Color", "Name color", 255, 122, 0, 255))
+				.add(new ColorSetting("Separator", "Separator color", 130, 130, 130, 255))
+				.add(new ModeSetting("Tag", "Right-side tag", "beta-test", "beta-test", "release", "private", "dev"))
 				.hud((ctx, x, y, self) -> {
-					boolean compact = self.modeVal("Style").equals("Compact");
-					String text = compact ? "DnsV" : "DnsVisuals";
-					if (self.boolVal("Show version")) text += " v1.2";
-					int color = self.boolVal("Rainbow")
+					boolean shadow = self.boolVal("Shadow");
+					int name = self.boolVal("Rainbow")
 							? ColorUtil.rainbow(self.numVal("Rainbow speed"), 0)
 							: self.colorVal("Color");
-					ctx.drawText(tr(), text, x, y, color, self.boolVal("Shadow"));
-					return tr().fontHeight;
+					int sep = self.colorVal("Separator");
+					int white = 0xFFFFFFFF;
+					String p1 = "DnsVisuals v1.2";
+					String p2 = "Developer";
+					String p3 = self.modeVal("Tag");
+					String s = " | ";
+					int sw = tr().getWidth(s);
+					int total = tr().getWidth(p1) + sw + tr().getWidth(p2) + sw + tr().getWidth(p3);
+					int pad = 3;
+					int h = tr().fontHeight;
+					if (self.boolVal("Background")) {
+						ctx.fill(x - pad, y - pad, x + total + pad, y + h + pad, 0x90000000);
+						ctx.fill(x - pad, y - pad, x - pad + 1, y + h + pad, name);
+					}
+					int cx = x;
+					ctx.drawText(tr(), p1, cx, y, name, shadow); cx += tr().getWidth(p1);
+					ctx.drawText(tr(), s, cx, y, sep, shadow); cx += sw;
+					ctx.drawText(tr(), p2, cx, y, white, shadow); cx += tr().getWidth(p2);
+					ctx.drawText(tr(), s, cx, y, sep, shadow); cx += sw;
+					ctx.drawText(tr(), p3, cx, y, white, shadow);
+					return h + (self.boolVal("Background") ? pad : 0);
 				}));
 
 		// 2. FPS
@@ -182,6 +204,104 @@ public class ModuleManager {
 					}
 					return used;
 				}));
+
+		// 6. ArrayList -> enabled modules, left/right alignable (self-positions)
+		reg(new Module("ArrayList", "List of enabled modules", Category.HUD)
+				.add(new ModeSetting("Align", "Screen side", "Right", "Left", "Right"))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new BooleanSetting("Background", "Bar behind text", true))
+				.add(new BooleanSetting("Rainbow", "Rainbow gradient", true))
+				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
+				.add(new ColorSetting("Color", "Static color", 255, 122, 0, 255))
+				.hud((ctx, x, y, self) -> {
+					MinecraftClient mc = MinecraftClient.getInstance();
+					int screenW = mc.getWindow().getScaledWidth();
+					boolean right = self.modeVal("Align").equals("Right");
+					boolean shadow = self.boolVal("Shadow");
+					List<String> names = new ArrayList<>();
+					for (Module m : all()) {
+						if (m.isEnabled() && m.category != Category.INTERFACE) names.add(m.name);
+					}
+					names.sort((a, b) -> tr().getWidth(b) - tr().getWidth(a));
+					int dy = 2;
+					int i = 0;
+					for (String n : names) {
+						int w = tr().getWidth(n);
+						int tx = right ? screenW - w - 3 : 3;
+						int color = self.boolVal("Rainbow")
+								? ColorUtil.rainbow(self.numVal("Rainbow speed"), i * 40)
+								: self.colorVal("Color");
+						if (self.boolVal("Background")) {
+							ctx.fill(tx - 2, dy - 1, tx + w + 2, dy + tr().fontHeight, 0x90000000);
+							int stripX = right ? tx + w + 1 : tx - 2;
+							ctx.fill(stripX, dy - 1, stripX + 1, dy + tr().fontHeight, color);
+						}
+						ctx.drawText(tr(), n, tx, dy, color, shadow);
+						dy += tr().fontHeight + 1;
+						i++;
+					}
+					return 0;
+				}));
+
+		// 7. Effects -> active potion effects
+		reg(new Module("Effects", "Active potion effects", Category.HUD)
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new BooleanSetting("Show level", "Append level", true))
+				.add(new BooleanSetting("Show time", "Append duration", true))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.hud((ctx, x, y, self) -> {
+					ClientPlayerEntity p = MinecraftClient.getInstance().player;
+					if (p == null) return 0;
+					int color = self.colorVal("Color");
+					boolean shadow = self.boolVal("Shadow");
+					int dy = y;
+					for (StatusEffectInstance e : p.getStatusEffects()) {
+						StringBuilder sb = new StringBuilder(
+								Text.translatable(e.getEffectType().value().getTranslationKey()).getString());
+						if (self.boolVal("Show level")) sb.append(' ').append(e.getAmplifier() + 1);
+						if (self.boolVal("Show time")) {
+							int secs = e.getDuration() / 20;
+							sb.append("  ").append(secs / 60).append(':').append(String.format("%02d", secs % 60));
+						}
+						ctx.drawText(tr(), sb.toString(), x, dy, color, shadow);
+						dy += tr().fontHeight + 1;
+					}
+					return dy == y ? 0 : (dy - y);
+				}));
+
+		// 8. PlayerInfo -> shows last entity you hit (positioned by HudManager)
+		reg(new Module("PlayerInfo", "Target panel when you hit someone", Category.HUD)
+				.add(new SliderSetting("Duration", "Seconds shown", 4, 1, 10, 1, "s"))
+				.add(new BooleanSetting("Health bar", "Show health bar", true))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.add(new ColorSetting("Accent", "Accent strip", 255, 122, 0, 255))
+				.hud((ctx, x, y, self) -> {
+					long ms = (long) (self.numVal("Duration") * 1000);
+					LivingEntity t = AttackTracker.recentLiving(ms);
+					if (t == null) return 0;
+					boolean shadow = self.boolVal("Shadow");
+					int color = self.colorVal("Color");
+					float hp = t.getHealth();
+					float max = Math.max(1f, t.getMaxHealth());
+					String line = t.getName().getString() + "  "
+							+ String.format("%.1f", hp) + "/" + String.format("%.1f", max);
+					boolean bar = self.boolVal("Health bar");
+					int w = Math.max(tr().getWidth(line), 70) + 8;
+					int h = tr().fontHeight + (bar ? 9 : 0) + 6;
+					ctx.fill(x, y, x + w, y + h, 0x90000000);
+					ctx.fill(x, y, x + 2, y + h, self.colorVal("Accent"));
+					ctx.drawText(tr(), line, x + 5, y + 3, color, shadow);
+					if (bar) {
+						int by = y + tr().fontHeight + 5;
+						int bw = w - 10;
+						float frac = Math.max(0f, Math.min(1f, hp / max));
+						int hc = frac > 0.5f ? 0xFF55FF55 : frac > 0.25f ? 0xFFFFFF55 : 0xFFFF5555;
+						ctx.fill(x + 5, by, x + 5 + bw, by + 3, 0xFF333333);
+						ctx.fill(x + 5, by, x + 5 + (int) (bw * frac), by + 3, hc);
+					}
+					return h;
+				}));
 	}
 
 	// =========================== RENDER ===========================
@@ -230,6 +350,27 @@ public class ModuleManager {
 				.add(new BooleanSetting("Particles", "Particles on hit", true))
 				.add(new ModeSetting("Particle", "Particle type", "Crit", "Crit", "Flame", "Heart", "Cloud", "Angry"))
 				.add(new SliderSetting("Particle count", "Particles per hit", 16, 1, 50, 1, "")));
+
+		// ESP -> highlight visible players/entities
+		reg(new Module("ESP", "Highlight players/entities in sight", Category.RENDER)
+				.add(new ModeSetting("Mode", "Render style", "Outline", "Outline", "Fill", "Both"))
+				.add(new BooleanSetting("Visible only", "Only when in line of sight", true))
+				.add(new BooleanSetting("Players only", "Only players", true))
+				.add(new BooleanSetting("Nametag", "Name above entity", true))
+				.add(new BooleanSetting("Health in name", "Append health to name", true))
+				.add(new SliderSetting("Range", "Max distance", 48, 4, 128, 1, "m"))
+				.add(new SliderSetting("Line width", "Outline width", 1.5, 0.5, 4, 0.5, "px"))
+				.add(new ColorSetting("Color", "ESP color", 255, 80, 80, 255))
+				.add(new SliderSetting("Fill opacity", "Fill alpha", 40, 0, 150, 5, "")));
+
+		// Chams -> solid color overlay on hands + players (visible only)
+		reg(new Module("Chams", "Solid color overlay (hands + players)", Category.RENDER)
+				.add(new BooleanSetting("Hands", "Color your hands", true))
+				.add(new BooleanSetting("Players", "Color players", true))
+				.add(new BooleanSetting("Visible only", "Only when visible", true))
+				.add(new ColorSetting("Hand color", "Hand overlay", 120, 200, 255, 255))
+				.add(new ColorSetting("Player color", "Player overlay", 255, 120, 120, 255))
+				.add(new SliderSetting("Opacity", "Overlay alpha", 160, 40, 255, 5, "")));
 	}
 
 	// =========================== INTERFACE ===========================
@@ -246,7 +387,8 @@ public class ModuleManager {
 				.add(new ColorSetting("Background", "Panel background", 16, 16, 16, 235))
 				.add(new BooleanSetting("Rainbow accent", "Cycle accent hue", false))
 				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
-				.add(new ModeSetting("Base", "Background tone", "Black", "Black", "Dark", "Gray")));
+				.add(new ModeSetting("Base", "Background tone", "Black", "Black", "Dark", "Gray"))
+				.add(new ModeSetting("Menu style", "GUI layout", "Panel", "Panel", "Columns")));
 
 		reg(new Module("Animations", "GUI motion feel", Category.INTERFACE)
 				.add(new SliderSetting("Speed", "Animation speed", 12, 4, 30, 1, ""))
@@ -316,6 +458,14 @@ public class ModuleManager {
 				.add(new SliderSetting("Unfocused FPS", "FPS when unfocused", 15, 5, 60, 5, ""))
 				.add(new BooleanSetting("Show in HUD", "Display cap", false))
 				.add(new ModeSetting("Mode", "Cap behavior", "Smooth", "Smooth", "Hard")));
+
+		// AutoTool -> switch to the best tool when mining
+		reg(new Module("AutoTool", "Switch to the best tool when mining", Category.MISC)
+				.add(new BooleanSetting("Switch back", "Restore previous slot", true))
+				.add(new BooleanSetting("Only hotbar", "Use hotbar slots only", true))
+				.add(new BooleanSetting("Prefer silk touch", "Prefer Silk Touch", false))
+				.add(new BooleanSetting("Prefer fortune", "Prefer Fortune", false))
+				.add(new BooleanSetting("Avoid low durability", "Skip nearly-broken tools", true)));
 
 		reg(new Module("WindowTitle", "Custom game window title", Category.MISC)
 				.add(new ModeSetting("Title", "Window text", "DnsVisuals", "DnsVisuals", "Minecraft", "Custom"))
