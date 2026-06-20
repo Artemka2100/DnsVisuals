@@ -7,12 +7,15 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Zoom: shrinks FOV while the Zoom module's key is held. Also captures the FOV for ESP nametags. */
+/** Zoom: shrinks FOV while the Zoom module's key is held. Also captures the FOV for ESP nametags. Plus NoRender hooks. */
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
 	@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
@@ -36,5 +39,19 @@ public class GameRendererMixin {
 	@Inject(method = "getFov", at = @At("RETURN"))
 	private void dnsvisuals$captureFov(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {
 		EspRenderer.lastFov = cir.getReturnValueF();
+	}
+
+	/** NoRender: skip the camera tilt that happens when you take damage. */
+	@Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true)
+	private void dnsvisuals$noHurtCam(MatrixStack matrices, float tickProgress, CallbackInfo ci) {
+		Module m = ModuleManager.INSTANCE.find("NoRender");
+		if (m != null && m.isEnabled() && m.boolVal("HurtCam")) ci.cancel();
+	}
+
+	/** NoRender: skip drawing the first-person hand/held item. */
+	@Inject(method = "renderHand", at = @At("HEAD"), cancellable = true)
+	private void dnsvisuals$noHand(float tickProgress, boolean sleeping, Matrix4f positionMatrix, CallbackInfo ci) {
+		Module m = ModuleManager.INSTANCE.find("NoRender");
+		if (m != null && m.isEnabled() && m.boolVal("Hand")) ci.cancel();
 	}
 }
