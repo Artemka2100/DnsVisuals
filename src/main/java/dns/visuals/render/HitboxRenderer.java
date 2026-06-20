@@ -4,7 +4,7 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexRendering;
@@ -20,8 +20,8 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
-import org.joml.Matrix4f;
 
 /**
  * Renders entity hitboxes and spawns hit particles.
@@ -38,7 +38,7 @@ public class HitboxRenderer {
 	private HitboxRenderer() {}
 
 	/**
-	 * Called from the GameRenderer mixin after the world has been rendered.
+	 * Called from the world-render callback after the world has been rendered.
 	 * Builds a camera-relative MatrixStack because WorldRenderContext#matrixStack
 	 * was removed in 1.21.9+.
 	 */
@@ -49,14 +49,14 @@ public class HitboxRenderer {
 
 		Camera camera = mc.gameRenderer.getCamera();
 		if (camera == null) return;
-		Vec3d cam = camera.getPos();
+		Vec3d cam = camera.getCameraPos();
 
 		MatrixStack ms = new MatrixStack();
 		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
 		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180f));
 
 		VertexConsumerProvider.Immediate imm = mc.getBufferBuilders().getEntityVertexConsumers();
-		VertexConsumer vc = imm.getBuffer(RenderLayer.getLines());
+		VertexConsumer vc = imm.getBuffer(RenderLayers.lines());
 
 		boolean playersOnly = hb.boolVal("Players only");
 		double range = hb.numVal("Range");
@@ -84,17 +84,12 @@ public class HitboxRenderer {
 				color = hitColor;
 			}
 
-			float a = ((color >> 24) & 0xFF) / 255f;
-			float r = ((color >> 16) & 0xFF) / 255f;
-			float g = ((color >> 8) & 0xFF) / 255f;
-			float b = (color & 0xFF) / 255f;
-
 			Box box = e.getBoundingBox();
-			VertexRendering.drawBox(ms, vc, box, r, g, b, a);
+			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, 1.5f);
 		}
 
 		ms.pop();
-		imm.draw(RenderLayer.getLines());
+		imm.draw(RenderLayers.lines());
 	}
 
 	/**
@@ -106,7 +101,7 @@ public class HitboxRenderer {
 		if (hb != null && hb.isEnabled()) {
 			lastAttacked = entity;
 			lastAttackTime = System.currentTimeMillis();
-			if (world.isClient) {
+			if (world.isClient()) {
 				spawnParticles(hb, world, entity);
 			}
 		}
