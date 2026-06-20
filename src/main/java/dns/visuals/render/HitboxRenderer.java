@@ -73,7 +73,7 @@ public class HitboxRenderer {
 		long now = System.currentTimeMillis();
 
 		// Interpolation factor for this frame so boxes track the smoothly-rendered model.
-		double td = mc.getRenderTickCounter().getTickDelta(false);
+		double td = mc.getRenderTickCounter().getTickProgress(false);
 
 		for (Entity e : mc.world.getEntities()) {
 			if (e == mc.player) continue;
