@@ -2,7 +2,6 @@ package dns.visuals;
 
 import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
-import dns.visuals.hud.HudManager;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.HitboxRenderer;
@@ -17,7 +16,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
-/** Mod entrypoint. Wires up modules, HUD, config, CPS/TPS tracking, world visuals and the GUI open key. */
+/** Mod entrypoint. Wires up modules, config, CPS/TPS tracking, world visuals and the GUI open key. */
 public class DnsVisuals implements ClientModInitializer {
 	public static final String MOD_ID = "dnsvisuals";
 	public static final CpsTracker CPS = new CpsTracker();
@@ -29,7 +28,6 @@ public class DnsVisuals implements ClientModInitializer {
 	public void onInitializeClient() {
 		ModuleManager.INSTANCE.init();
 		ConfigManager.load();
-		HudManager.register();
 
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(HitboxRenderer::onWorldRender);
 		AttackEntityCallback.EVENT.register(HitboxRenderer::onAttack);
