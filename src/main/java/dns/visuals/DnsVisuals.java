@@ -8,10 +8,12 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
+import dns.visuals.render.JumpCircle;
 import dns.visuals.render.Waypoint;
 import dns.visuals.render.WaypointHud;
 import dns.visuals.setting.BooleanSetting;
 import dns.visuals.setting.ModeSetting;
+import dns.visuals.setting.SliderSetting;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.AutoTool;
 import dns.visuals.util.CpsTracker;
@@ -37,6 +39,7 @@ public class DnsVisuals implements ClientModInitializer {
 
 	private boolean openKeyWasDown = false;
 	private boolean fullbrightApplied = false;
+	private boolean prevOnGround = true;
 
 	@Override
 	public void onInitializeClient() {
@@ -63,6 +66,15 @@ public class DnsVisuals implements ClientModInitializer {
 		weather.add(new ModeSetting("Weather", "Weather to show", "Clear",
 				"Clear", "Rain", "Thunder"));
 		ModuleManager.INSTANCE.all().add(weather);
+
+		// JumpCircles: ring/square of particles spawned under the player on jump.
+		Module jump = new Module("JumpCircles", "Spawn a ring/square of particles when you jump", Category.RENDER);
+		jump.add(new ModeSetting("Shape", "Ring shape", "Circle", "Circle", "Square"));
+		jump.add(new SliderSetting("Radius", "Ring radius", 0.6, 0.2, 3.0, 0.1, " blocks"));
+		jump.add(new SliderSetting("Points", "Particle count", 24, 4, 64, 1, ""));
+		jump.add(new ModeSetting("Particle", "Particle type", "End rod",
+				"End rod", "Flame", "Crit", "Cloud", "Note", "Happy"));
+		ModuleManager.INSTANCE.all().add(jump);
 
 		ConfigManager.load();
 
@@ -111,6 +123,13 @@ public class DnsVisuals implements ClientModInitializer {
 			tickFullbright(mc);
 			tickSprint(mc);
 			AutoTool.tick();
+
+			// JumpCircles: fire on the rising edge of leaving the ground with upward velocity.
+			boolean onGround = mc.player.isOnGround();
+			if (prevOnGround && !onGround && mc.player.getVelocity().y > 0.08) {
+				JumpCircle.onJump(mc);
+			}
+			prevOnGround = onGround;
 		}
 
 		// Open ClickGUI on the configured key (default Right Shift)
