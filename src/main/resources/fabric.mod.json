@@ -3,7 +3,7 @@
 	"id": "dnsvisuals",
 	"version": "${version}",
 	"name": "DnsVisuals",
-	"description": "HUD / visual client: watermark, FPS, CPS, TPS, ArmorHUD, custom crosshair, themes and chat tweaks. Right Shift opens the ClickGUI.",
+	"description": "HUD / visual client: watermark, FPS, CPS, TPS, ArmorHUD, custom crosshair, hitboxes, themes and chat tweaks. Right Shift opens the ClickGUI.",
 	"authors": ["You"],
 	"contact": {},
 	"license": "MIT",
@@ -14,6 +14,9 @@
 			"dns.visuals.DnsVisuals"
 		]
 	},
+	"mixins": [
+		"dnsvisuals.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.15.0",
 		"fabric-api": "*",
