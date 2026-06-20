@@ -3,13 +3,16 @@ package dns.visuals;
 import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
 import dns.visuals.gui.HudEditorScreen;
+import dns.visuals.module.Category;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
 import dns.visuals.render.Waypoint;
 import dns.visuals.render.WaypointHud;
+import dns.visuals.setting.BooleanSetting;
 import dns.visuals.util.AttackTracker;
+import dns.visuals.util.AutoTool;
 import dns.visuals.util.CpsTracker;
 import dns.visuals.util.TpsTracker;
 import net.fabricmc.api.ClientModInitializer;
@@ -20,6 +23,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.util.ActionResult;
 import org.lwjgl.glfw.GLFW;
 
@@ -30,12 +35,22 @@ public class DnsVisuals implements ClientModInitializer {
 	public static final TpsTracker TPS = new TpsTracker();
 
 	private boolean openKeyWasDown = false;
+	private boolean fullbrightApplied = false;
 
 	@Override
 	public void onInitializeClient() {
 		ModuleManager.INSTANCE.init();
 		// Register the Waypoint HUD module before loading config so its state persists too.
 		ModuleManager.INSTANCE.all().add(WaypointHud.createModule());
+
+		// Extra behaviour modules registered here so they show up in their categories.
+		Module fullbright = new Module("Fullbright", "Brighten the world (Night Vision)", Category.RENDER);
+		ModuleManager.INSTANCE.all().add(fullbright);
+
+		Module sprint = new Module("Sprint", "Automatically keep sprinting", Category.MISC);
+		sprint.add(new BooleanSetting("Keep sprint", "Sprint without holding forward", false));
+		ModuleManager.INSTANCE.all().add(sprint);
+
 		ConfigManager.load();
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
@@ -78,6 +93,13 @@ public class DnsVisuals implements ClientModInitializer {
 		// TPS: approximate by feeding a tick each client tick while in a world
 		if (mc.world != null) TPS.onTimeUpdate(1);
 
+		// Module-driven per-tick behaviour (only while actually in a world)
+		if (mc.player != null && mc.world != null) {
+			tickFullbright(mc);
+			tickSprint(mc);
+			AutoTool.tick();
+		}
+
 		// Open ClickGUI on the configured key (default Right Shift)
 		Module clickGui = ModuleManager.INSTANCE.find("ClickGUI");
 		int key = clickGui != null ? clickGui.keyVal("Open key") : GLFW.GLFW_KEY_RIGHT_SHIFT;
@@ -87,5 +109,31 @@ public class DnsVisuals implements ClientModInitializer {
 			mc.setScreen(new ClickGuiScreen());
 		}
 		openKeyWasDown = down;
+	}
+
+	/** Keeps Night Vision applied client-side while Fullbright is enabled; removes it when off. */
+	private void tickFullbright(MinecraftClient mc) {
+		Module fb = ModuleManager.INSTANCE.find("Fullbright");
+		boolean on = fb != null && fb.isEnabled();
+		if (on) {
+			mc.player.addStatusEffect(new StatusEffectInstance(
+					StatusEffects.NIGHT_VISION, 400, 0, false, false, false));
+			fullbrightApplied = true;
+		} else if (fullbrightApplied) {
+			mc.player.removeStatusEffect(StatusEffects.NIGHT_VISION);
+			fullbrightApplied = false;
+		}
+	}
+
+	/** Auto-sprint: sprints while moving forward (or always, with "Keep sprint") if not starving/sneaking. */
+	private void tickSprint(MinecraftClient mc) {
+		Module sprint = ModuleManager.INSTANCE.find("Sprint");
+		if (sprint == null || !sprint.isEnabled()) return;
+		boolean keep = sprint.boolVal("Keep sprint");
+		boolean forward = mc.options.forwardKey.isPressed();
+		boolean starving = mc.player.getHungerManager().getFoodLevel() <= 6;
+		if ((keep || forward) && !mc.player.isSneaking() && !starving) {
+			mc.player.setSprinting(true);
+		}
 	}
 }
