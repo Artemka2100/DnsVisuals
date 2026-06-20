@@ -8,6 +8,8 @@
 		"EntityMixin",
 		"GameRendererMixin",
 		"InGameHudMixin",
+		"LivingEntityRendererMixin",
+		"LivingEntityRenderStateMixin",
 		"MinecraftClientMixin",
 		"WorldMixin"
 	],
