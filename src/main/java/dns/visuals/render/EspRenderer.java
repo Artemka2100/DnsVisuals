@@ -29,7 +29,8 @@ import java.util.List;
  * Entity ESP. Draws an outline and/or color fill around living entities (or players only),
  * an optional nametag with health, and can be limited to entities the player can actually see.
  *
- * Boxes are drawn in world space (same camera-relative MatrixStack approach as HitboxRenderer).
+ * Boxes are drawn into the engine-managed {@link WorldRenderContext#consumers()} buffer (same
+ * approach as HitboxRenderer) so the world renderer flushes them; we never call draw() ourselves.
  * Nametags are projected from 3D to screen space during the world-render pass, then drawn as 2D
  * text in {@link #renderOverlay(DrawContext)} from the InGameHud tail.
  */
@@ -81,7 +82,8 @@ public class EspRenderer {
 		int sw = mc.getWindow().getScaledWidth();
 		int sh = mc.getWindow().getScaledHeight();
 
-		VertexConsumerProvider.Immediate imm = mc.getBufferBuilders().getEntityVertexConsumers();
+		// Engine-managed buffer; flushed by the world renderer after this pass.
+		VertexConsumerProvider consumers = context.consumers();
 
 		for (Entity e : mc.world.getEntities()) {
 			if (e == mc.player) continue;
@@ -95,13 +97,15 @@ public class EspRenderer {
 
 			Box box = e.getBoundingBox();
 
-			if (fill) {
-				VertexConsumer fvc = imm.getBuffer(RenderLayers.debugFilledBox());
-				filledBox(fvc, modelView, fillColor, box);
-			}
-			if (outline) {
-				VertexConsumer vc = imm.getBuffer(RenderLayers.lines());
-				VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, lineWidth);
+			if (consumers != null) {
+				if (fill) {
+					VertexConsumer fvc = consumers.getBuffer(RenderLayers.debugFilledBox());
+					filledBox(fvc, modelView, fillColor, box);
+				}
+				if (outline) {
+					VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
+					VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, lineWidth);
+				}
 			}
 
 			if (nametag) {
@@ -125,8 +129,6 @@ public class EspRenderer {
 				tags.add(new Tag(screenX, screenY, name, hpFrac, color));
 			}
 		}
-
-		imm.draw();
 	}
 
 	/** Draws the nametags computed in {@link #onWorldRender}; called from the InGameHud tail. */
