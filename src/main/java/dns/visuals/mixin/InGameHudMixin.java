@@ -23,6 +23,19 @@ public class InGameHudMixin {
 		HudManager.renderHud(ctx, tickCounter);
 	}
 
+	/**
+	 * NoRender \"Fire\": skip the first-person screen overlays (fire/water/etc.) while you are on fire.
+	 * Uses require = 0 so that if this mapping is absent the build/game still loads fine; the toggle
+	 * simply has no effect in that case.
+	 */
+	@Inject(method = "renderMiscOverlays", at = @At("HEAD"), cancellable = true, require = 0)
+	private void dnsvisuals$noFire(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
+		Module m = ModuleManager.INSTANCE.find("NoRender");
+		if (m == null || !m.isEnabled() || !m.boolVal("Fire")) return;
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (mc.player != null && mc.player.isOnFire()) ci.cancel();
+	}
+
 	@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
 	private void dnsvisuals$crosshair(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
 		Module ch = ModuleManager.INSTANCE.find("Crosshair");
