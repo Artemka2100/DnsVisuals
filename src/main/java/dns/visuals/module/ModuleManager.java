@@ -312,7 +312,8 @@ public class ModuleManager {
 				.add(new BooleanSetting("Dimension coords", "Show other-dimension XZ", false))
 				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
 				.hud((ctx, x, y, self) -> {
-					ClientPlayerEntity p = MinecraftClient.getInstance().player;
+					MinecraftClient mc = MinecraftClient.getInstance();
+					ClientPlayerEntity p = mc.player;
 					if (p == null) return 0;
 					int px = (int) Math.floor(p.getX());
 					int py = (int) Math.floor(p.getY());
@@ -323,7 +324,7 @@ public class ModuleManager {
 					ctx.drawText(tr(), text, x, y, color, shadow);
 					int used = tr().fontHeight;
 					if (self.boolVal("Dimension coords")) {
-						boolean nether = p.getWorld().getRegistryKey() == World.NETHER;
+						boolean nether = mc.world != null && mc.world.getRegistryKey() == World.NETHER;
 						int ox, oz;
 						String tag;
 						if (nether) { ox = px * 8; oz = pz * 8; tag = "OW"; }
