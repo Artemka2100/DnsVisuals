@@ -10,7 +10,7 @@ import dns.visuals.util.TpsTracker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
@@ -29,7 +29,9 @@ public class DnsVisuals implements ClientModInitializer {
 		ModuleManager.INSTANCE.init();
 		ConfigManager.load();
 
-		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> HitboxRenderer.INSTANCE.onWorldRender());
+		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
+		// recommended hook for drawing lines/overlays (vanilla draws hitboxes here too).
+		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> HitboxRenderer.INSTANCE.onWorldRender());
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
