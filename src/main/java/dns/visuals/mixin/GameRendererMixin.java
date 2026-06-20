@@ -21,7 +21,7 @@ public class GameRendererMixin {
 		int key = zoom.keyVal("Key");
 		if (key <= 0) return;
 		MinecraftClient mc = MinecraftClient.getInstance();
-		if (!InputUtil.isKeyPressed(mc.getWindow().getHandle(), key)) return;
+		if (!InputUtil.isKeyPressed(mc.getWindow(), key)) return;
 		double factor = zoom.numVal("Factor");
 		if (factor < 1.0) factor = 1.0;
 		cir.setReturnValue((float) (cir.getReturnValueF() / factor));
