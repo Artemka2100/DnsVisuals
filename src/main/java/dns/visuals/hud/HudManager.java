@@ -112,6 +112,17 @@ public final class HudManager {
 		}
 	}
 
+	// ---- persistence (used by ConfigManager) ----
+	/** Live element position map (name -> [x, y]). Used by ConfigManager#save. */
+	public static Map<String, int[]> savedPositions() {
+		return POS;
+	}
+
+	/** Restore a saved element position (called by ConfigManager#load). */
+	public static void loadPosition(String name, int x, int y) {
+		POS.put(name, new int[]{x, y});
+	}
+
 	// ---- drag API called from HudEditorScreen ----
 	public static boolean isEditing() {
 		return MinecraftClient.getInstance().currentScreen instanceof HudEditorScreen;
