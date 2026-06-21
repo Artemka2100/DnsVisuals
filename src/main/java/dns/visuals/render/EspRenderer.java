@@ -16,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import org.joml.Matrix4f;
@@ -30,9 +31,12 @@ import java.util.List;
  *
  * Boxes are drawn into the engine-managed {@link WorldRenderContext#consumers()} buffer (same
  * approach as HitboxRenderer) so the world renderer flushes them; we never call draw() ourselves.
- * We use the engine's own matrix stack ({@link WorldRenderContext#matrices()}) instead of a
- * hand-built pitch/yaw matrix (which drifts after the 1.21.9 render rework), so every coordinate we
- * submit — boxes AND the nametag world anchor — must be relative to the camera (offset by -cam).
+ *
+ * During the BEFORE_DEBUG_RENDER world event on 1.21.11, {@link WorldRenderContext#matrices()}
+ * returns null (the engine no longer threads a global pose stack through this phase), so we build
+ * the camera matrix ourselves from the camera pitch/yaw. Because that matrix carries only the
+ * camera ORIENTATION (no translation), every coordinate we submit — boxes AND the nametag world
+ * anchor — must be relative to the camera (offset by -cam).
  * Nametags are projected from 3D to screen space during the world-render pass, then drawn as 2D
  * text in {@link #renderOverlay(DrawContext)} from the InGameHud tail.
  */
@@ -79,9 +83,12 @@ public class EspRenderer {
 		int fillAlpha = Math.max(0, Math.min(255, (int) esp.numVal("Fill opacity")));
 		int fillColor = (fillAlpha << 24) | (color & 0x00FFFFFF);
 
-		// Engine matrix stack (already carries the camera transform). Coordinates must be
-		// camera-relative, so boxes and nametag anchors are offset by -cam below.
-		MatrixStack ms = context.matrices();
+		// context.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera
+		// orientation matrix by hand. It carries no translation, so all coordinates submitted
+		// below (boxes and nametag anchors) are offset by -cam to be camera-relative.
+		MatrixStack ms = new MatrixStack();
+		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
 		// proj * modelView for screen projection of nametags. Neither WorldRenderContext nor
@@ -110,7 +117,7 @@ public class EspRenderer {
 			if (mc.player.squaredDistanceTo(e) > rangeSq) continue;
 			if (visibleOnly && !mc.player.canSee(e)) continue;
 
-			// Camera-relative bounding box (engine matrix has no camera translation baked in).
+			// Camera-relative bounding box (our matrix has no camera translation baked in).
 			Box box = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
 
 			if (consumers != null) {
