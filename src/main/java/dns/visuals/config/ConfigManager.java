@@ -1,5 +1,6 @@
 package dns.visuals.config;
 
+import dns.visuals.hud.HudManager;
 import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.setting.Setting;
@@ -10,11 +11,12 @@ import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Map;
 
 /**
  * Saves/loads module enabled-state and settings to config/dnsvisuals.txt.
  * Line format:  moduleName|key|value   (key "#enabled" stores the toggle state).
+ * HUD element positions use a reserved module name "#hud":  #hud|elementName|x,y
  */
 public final class ConfigManager {
 	private ConfigManager() {}
@@ -33,6 +35,13 @@ public final class ConfigManager {
 					w.newLine();
 				}
 			}
+			// HUD element positions
+			for (Map.Entry<String, int[]> e : HudManager.savedPositions().entrySet()) {
+				int[] xy = e.getValue();
+				if (xy == null || xy.length < 2) continue;
+				w.write("#hud|" + e.getKey() + "|" + xy[0] + "," + xy[1]);
+				w.newLine();
+			}
 		} catch (Exception e) {
 			System.err.println("[DnsVisuals] Failed to save config: " + e.getMessage());
 		}
@@ -46,6 +55,16 @@ public final class ConfigManager {
 			while ((line = r.readLine()) != null) {
 				String[] parts = line.split("\\|", 3);
 				if (parts.length != 3) continue;
+				// HUD element position line
+				if (parts[0].equals("#hud")) {
+					String[] xy = parts[2].split(",");
+					if (xy.length == 2) {
+						try {
+							HudManager.loadPosition(parts[1], Integer.parseInt(xy[0].trim()), Integer.parseInt(xy[1].trim()));
+						} catch (NumberFormatException ignored) {}
+					}
+					continue;
+				}
 				Module m = ModuleManager.INSTANCE.find(parts[0]);
 				if (m == null) continue;
 				if (parts[1].equals("#enabled")) {
