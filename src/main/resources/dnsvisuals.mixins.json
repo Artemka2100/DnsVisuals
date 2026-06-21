@@ -4,6 +4,8 @@
 	"package": "dns.visuals.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"AbstractClientPlayerEntityMixin",
+		"BlindnessFogMixin",
 		"ClientWorldMixin",
 		"EntityMixin",
 		"GameRendererMixin",
@@ -11,6 +13,7 @@
 		"InGameHudMixin",
 		"InGameOverlayRendererMixin",
 		"LivingEntityMixin",
+		"LivingEntityParticleMixin",
 		"LivingEntityRendererMixin",
 		"LivingEntityRenderStateMixin",
 		"MinecraftClientMixin",

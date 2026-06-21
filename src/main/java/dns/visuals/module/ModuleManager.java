@@ -469,7 +469,10 @@ public class ModuleManager {
 				.add(new BooleanSetting("Vignette", "Disable the dark screen-edge vignette", false))
 				.add(new BooleanSetting("Spyglass", "Hide the spyglass scope overlay", false))
 				.add(new BooleanSetting("Portal", "Hide the nether portal screen tint", false))
-				.add(new BooleanSetting("Nausea", "Hide the nausea/portal warp overlay", false)));
+				.add(new BooleanSetting("Nausea", "Hide the nausea/portal warp overlay", false))
+				.add(new BooleanSetting("Effect particles", "Hide colored potion swirl particles on entities", false))
+				.add(new BooleanSetting("Speed FOV", "Stop speed/sprint from changing your FOV", false))
+				.add(new BooleanSetting("Blindness", "Remove the blindness darkness/fog effect", false)));
 
 		// CustomSwing -> replace the hand swing animation (logic in HeldItemRendererMixin)
 		reg(new Module("CustomSwing", "Custom hand swing animation", Category.RENDER)
