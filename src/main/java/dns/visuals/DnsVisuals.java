@@ -93,19 +93,10 @@ public class DnsVisuals implements ClientModInitializer {
 		ambients.add(new ColorSetting("Color", "Particle color", 180, 220, 255, 255));
 		ModuleManager.INSTANCE.all().add(ambients);
 
-		// CustomHand: reposition/resize the first-person hand (handled by HeldItemRendererMixin).
-		Module customHand = new Module("CustomHand", "Reposition/resize the first-person hand", Category.RENDER);
-		customHand.add(new SliderSetting("X", "Left/right offset", 0.0, -1.0, 1.0, 0.05, ""));
-		customHand.add(new SliderSetting("Y", "Up/down offset", 0.0, -1.0, 1.0, 0.05, ""));
-		customHand.add(new SliderSetting("Z", "Forward/back offset", 0.0, -1.0, 1.0, 0.05, ""));
-		customHand.add(new SliderSetting("Size", "Hand scale", 1.0, 0.3, 2.5, 0.05, "x"));
-		ModuleManager.INSTANCE.all().add(customHand);
-
-		// CustomSwing: swing speed + alternate swing animation styles (handled by HeldItemRendererMixin + LivingEntityMixin).
-		Module customSwing = new Module("CustomSwing", "Custom swing speed and style", Category.RENDER);
-		customSwing.add(new ModeSetting("Style", "Swing animation", "Vanilla", "Vanilla", "Stab", "Slide", "Spin"));
-		customSwing.add(new SliderSetting("Speed", "Swing speed multiplier", 1.0, 0.5, 4.0, 0.1, "x"));
-		ModuleManager.INSTANCE.all().add(customSwing);
+		// NOTE: CustomHand and CustomSwing are registered by ModuleManager.buildRender() with their
+		// full feature set (per-hand offsets / multiple swing styles). They used to be registered a
+		// second time here with a simpler setting set, which created dead duplicate entries in the
+		// menu (find() returned the ModuleManager copies, so the duplicates did nothing). Removed.
 
 		ConfigManager.load();
 

@@ -30,48 +30,39 @@ public class InGameHudMixin {
 	}
 
 	/**
-	 * NoRender \"Fire\" / \"Overlays\": skip the misc first-person screen overlays. In 1.21.11 the fire
-	 * (and powder-snow) overlay is drawn inside InGameHud#renderMiscOverlays, so cancelling this method
-	 * is what actually removes the fire overlay. \"Overlays\" cancels it unconditionally; \"Fire\" cancels
-	 * it only while the player is on fire. require = 0 keeps the build/game loading even if the mapping
-	 * ever changes (the toggle just goes inert).
+	 * NoRender "Overlays": skip the misc first-person screen overlays drawn by renderMiscOverlays
+	 * (e.g. powder snow). The fire overlay is handled separately in InGameOverlayRendererMixin,
+	 * because in 1.21.11 fire is NOT drawn here. require = 0 keeps the game loading even if the
+	 * mapping ever changes (the toggle just goes inert).
 	 */
 	@Inject(method = "renderMiscOverlays", at = @At("HEAD"), cancellable = true, require = 0)
 	private void dnsvisuals$noMiscOverlays(DrawContext ctx, RenderTickCounter tickCounter, CallbackInfo ci) {
 		Module m = dnsvisuals$noRender();
-		if (m == null) return;
-		if (m.boolVal("Overlays")) {
-			ci.cancel();
-			return;
-		}
-		if (m.boolVal("Fire")) {
-			MinecraftClient mc = MinecraftClient.getInstance();
-			if (mc.player != null && mc.player.isOnFire()) ci.cancel();
-		}
+		if (m != null && m.boolVal("Overlays")) ci.cancel();
 	}
 
-	/** NoRender \"Vignette\": disable the dark screen-edge vignette overlay. */
+	/** NoRender "Vignette": disable the dark screen-edge vignette overlay. */
 	@Inject(method = "renderVignetteOverlay", at = @At("HEAD"), cancellable = true, require = 0)
 	private void dnsvisuals$noVignette(DrawContext ctx, Entity entity, CallbackInfo ci) {
 		Module m = dnsvisuals$noRender();
 		if (m != null && m.boolVal("Vignette")) ci.cancel();
 	}
 
-	/** NoRender \"Spyglass\": hide the spyglass scope overlay. */
+	/** NoRender "Spyglass": hide the spyglass scope overlay. */
 	@Inject(method = "renderSpyglassOverlay", at = @At("HEAD"), cancellable = true, require = 0)
 	private void dnsvisuals$noSpyglass(DrawContext ctx, float scale, CallbackInfo ci) {
 		Module m = dnsvisuals$noRender();
 		if (m != null && m.boolVal("Spyglass")) ci.cancel();
 	}
 
-	/** NoRender \"Portal\": hide the nether-portal screen tint. */
+	/** NoRender "Portal": hide the nether-portal screen tint. */
 	@Inject(method = "renderPortalOverlay", at = @At("HEAD"), cancellable = true, require = 0)
 	private void dnsvisuals$noPortal(DrawContext ctx, float nauseaStrength, CallbackInfo ci) {
 		Module m = dnsvisuals$noRender();
 		if (m != null && m.boolVal("Portal")) ci.cancel();
 	}
 
-	/** NoRender \"Nausea\": hide the nausea/warp overlay. */
+	/** NoRender "Nausea": hide the nausea/warp overlay. */
 	@Inject(method = "renderNauseaOverlay", at = @At("HEAD"), cancellable = true, require = 0)
 	private void dnsvisuals$noNausea(DrawContext ctx, float nauseaStrength, CallbackInfo ci) {
 		Module m = dnsvisuals$noRender();
