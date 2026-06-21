@@ -16,7 +16,6 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
@@ -27,10 +26,11 @@ import org.joml.Matrix4f;
  * The Fabric BLOCK_OUTLINE event + BlockOutlineContext were removed/redesigned during the 1.21.9
  * port, so instead of subscribing to that unstable event we draw our outline during the same
  * BEFORE_DEBUG_RENDER pass used by the hitbox/ESP renderers and read the targeted block from the
- * player's crosshair target. This uses only stable vanilla APIs.
+ * player's crosshair target.
  *
- * Note: this draws ON TOP of the vanilla outline rather than replacing it, but our colored/optionally
- * filled outline is what the user sees.
+ * Like the hitbox renderer, we use the engine's own matrix stack ({@link WorldRenderContext#matrices()})
+ * rather than a hand-built pitch/yaw matrix (which drifts after the 1.21.9 rework). Coordinates are
+ * therefore submitted relative to the camera (offset by -cam).
  */
 public class BlockOutlineRenderer {
 	public static final BlockOutlineRenderer INSTANCE = new BlockOutlineRenderer();
@@ -59,11 +59,13 @@ public class BlockOutlineRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180f));
-		ms.translate(-cam.x, -cam.y, -cam.z);
+		// Engine matrix stack: already carries the camera transform. Submit camera-relative coords.
+		MatrixStack ms = wrc.matrices();
 		Matrix4f modelView = ms.peek().getPositionMatrix();
+
+		double ox = pos.getX() - cam.x;
+		double oy = pos.getY() - cam.y;
+		double oz = pos.getZ() - cam.z;
 
 		int color = m.boolVal("Rainbow")
 				? ColorUtil.rainbow(m.numVal("Rainbow speed"), 0)
@@ -73,12 +75,12 @@ public class BlockOutlineRenderer {
 		if (m.boolVal("Fill")) {
 			int fillColor = (color & 0x00FFFFFF) | (0x50 << 24);
 			VertexConsumer fvc = consumers.getBuffer(RenderLayers.debugFilledBox());
-			Box bb = shape.getBoundingBox().offset(pos.getX(), pos.getY(), pos.getZ());
+			Box bb = shape.getBoundingBox().offset(ox, oy, oz);
 			filledBox(fvc, modelView, fillColor, bb);
 		}
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
-		VertexRendering.drawOutline(ms, vc, shape, pos.getX(), pos.getY(), pos.getZ(), color, width);
+		VertexRendering.drawOutline(ms, vc, shape, ox, oy, oz, color, width);
 	}
 
 	private static void filledBox(VertexConsumer vc, Matrix4f m, int c, Box b) {
