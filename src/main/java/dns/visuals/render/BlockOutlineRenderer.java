@@ -16,7 +16,6 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
@@ -29,9 +28,11 @@ import org.joml.Matrix4f;
  * BEFORE_DEBUG_RENDER pass used by the hitbox/ESP renderers and read the targeted block from the
  * player's crosshair target.
  *
- * During BEFORE_DEBUG_RENDER on 1.21.11, {@link WorldRenderContext#matrices()} returns null, so we
- * build the camera ORIENTATION matrix by hand from the camera pitch/yaw. It carries no translation,
- * so coordinates are submitted relative to the camera (offset by -cam).
+ * The world renderer applies the camera VIEW matrix to the consumers() buffer at flush time and
+ * (per the Fabric javadoc) expects every vertex to be CAMERA-RELATIVE. So geometry is submitted
+ * through an IDENTITY matrix with coordinates offset by -cam; applying our own pitch/yaw rotation on
+ * top would transform twice and make the outline drift/skew as the camera turns. wrc.matrices() is
+ * null in BEFORE_DEBUG_RENDER on 1.21.11, but we don't need it — identity is correct here.
  */
 public class BlockOutlineRenderer {
 	public static final BlockOutlineRenderer INSTANCE = new BlockOutlineRenderer();
@@ -60,12 +61,10 @@ public class BlockOutlineRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		// wrc.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera orientation
-		// matrix by hand. It carries no translation, so coordinates are submitted camera-relative.
+		// Identity matrix: the engine applies the camera view when it flushes the consumers() buffer,
+		// so we only supply camera-relative coordinates (offset by -cam below).
 		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
-		Matrix4f modelView = ms.peek().getPositionMatrix();
+		Matrix4f identity = ms.peek().getPositionMatrix();
 
 		double ox = pos.getX() - cam.x;
 		double oy = pos.getY() - cam.y;
@@ -80,7 +79,7 @@ public class BlockOutlineRenderer {
 			int fillColor = (color & 0x00FFFFFF) | (0x50 << 24);
 			VertexConsumer fvc = consumers.getBuffer(RenderLayers.debugFilledBox());
 			Box bb = shape.getBoundingBox().offset(ox, oy, oz);
-			filledBox(fvc, modelView, fillColor, bb);
+			filledBox(fvc, identity, fillColor, bb);
 		}
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
