@@ -20,6 +20,7 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
@@ -28,11 +29,10 @@ import net.minecraft.world.World;
  * Renders entity hitboxes and spawns hit particles (Minecraft 1.21.11 render APIs).
  *
  * We draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let the world
- * renderer flush it. Crucially we also use the engine's own matrix stack via
- * {@link WorldRenderContext#matrices()} instead of rebuilding a pitch/yaw matrix by hand: after the
- * 1.21.9 render rework a hand-built camera matrix no longer matches the engine, which made boxes
- * skew and drift further from entities with distance. The engine stack already carries the camera
- * orientation, so all coordinates we submit must be relative to the camera (offset by -cam).
+ * renderer flush it. During the BEFORE_DEBUG_RENDER world event on 1.21.11,
+ * {@link WorldRenderContext#matrices()} returns null, so we build the camera ORIENTATION matrix by
+ * hand from the camera pitch/yaw. That matrix carries no translation, so all coordinates we submit
+ * must be relative to the camera (offset by -cam).
  *
  * Boxes are positioned at the entity's INTERPOLATED render position (lastRenderX/Y/Z lerped by the
  * frame tick progress) to track the smoothly-rendered model.
@@ -59,9 +59,12 @@ public class HitboxRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		// Engine matrix stack (already carries the exact camera transform for this frame).
-		// Coordinates submitted to the engine buffer must be camera-relative, so we offset by -cam.
-		MatrixStack ms = context.matrices();
+		// context.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera
+		// orientation matrix by hand. It carries no translation, so coordinates submitted to the
+		// engine buffer are offset by -cam to be camera-relative.
+		MatrixStack ms = new MatrixStack();
+		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 
