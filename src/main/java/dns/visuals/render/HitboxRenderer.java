@@ -36,7 +36,8 @@ import net.minecraft.world.World;
  * identity is the correct matrix here.
  *
  * Boxes are positioned at the entity's INTERPOLATED render position (lastRenderX/Y/Z lerped by the
- * frame tick progress) to track the smoothly-rendered model.
+ * frame tick progress) to track the smoothly-rendered model. The "Box size" setting visually grows
+ * or shrinks every box by the same amount on all axes via Box#expand.
  */
 public class HitboxRenderer {
 	public static final HitboxRenderer INSTANCE = new HitboxRenderer();
@@ -69,6 +70,7 @@ public class HitboxRenderer {
 		boolean playersOnly = hb.boolVal("Players only");
 		double range = hb.numVal("Range");
 		double rangeSq = range * range;
+		double expand = hb.numVal("Box size");
 
 		int baseColor = hb.colorVal("Color");
 		int hitColor = hb.colorVal("Hit color");
@@ -97,6 +99,7 @@ public class HitboxRenderer {
 			double iy = MathHelper.lerp(td, e.lastRenderY, e.getY());
 			double iz = MathHelper.lerp(td, e.lastRenderZ, e.getZ());
 			Box box = e.getBoundingBox().offset(ix - e.getX(), iy - e.getY(), iz - e.getZ());
+			if (expand != 0) box = box.expand(expand);
 
 			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), -cam.x, -cam.y, -cam.z, color, 1.5f);
 		}

@@ -428,6 +428,7 @@ public class ModuleManager {
 				.add(new ColorSetting("Color", "Normal box color", 255, 255, 255, 160))
 				.add(new ColorSetting("Hit color", "Color while hitting", 255, 60, 60, 220))
 				.add(new SliderSetting("Range", "Max distance", 24, 4, 64, 1, "m"))
+				.add(new SliderSetting("Box size", "Grow/shrink box (visual)", 0, -0.3, 0.6, 0.05, "m"))
 				.add(new SliderSetting("Hit flash", "Hit color duration", 300, 50, 1000, 50, "ms"))
 				.add(new BooleanSetting("Players only", "Only show players", false))
 				.add(new BooleanSetting("Particles", "Particles on hit", true))
@@ -449,6 +450,8 @@ public class ModuleManager {
 		// Chams -> solid color FILL on players/mobs (depth-respecting; does not show through walls)
 		reg(new Module("Chams", "Solid color fill on players/mobs", Category.RENDER)
 				.add(new ModeSetting("Mode", "Render style", "Fill", "Fill", "Outline", "Both"))
+				.add(new ModeSetting("Color mode", "How the color is chosen", "Static", "Static", "Rainbow", "Health", "Distance"))
+				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
 				.add(new BooleanSetting("Players", "Color other players", true))
 				.add(new BooleanSetting("Mobs", "Color mobs/animals", false))
 				.add(new BooleanSetting("Self", "Color your own model (3rd person)", false))
@@ -461,7 +464,31 @@ public class ModuleManager {
 		reg(new Module("NoRender", "Disable selected visual effects", Category.RENDER)
 				.add(new BooleanSetting("HurtCam", "No damage camera tilt", true))
 				.add(new BooleanSetting("Hand", "Hide first-person hand", false))
-				.add(new BooleanSetting("Fire", "Hide first-person fire overlay", true)));
+				.add(new BooleanSetting("Fire", "Hide first-person fire overlay", true))
+				.add(new BooleanSetting("Overlays", "Hide all misc screen overlays (fire/powder snow)", false))
+				.add(new BooleanSetting("Vignette", "Disable the dark screen-edge vignette", false))
+				.add(new BooleanSetting("Spyglass", "Hide the spyglass scope overlay", false))
+				.add(new BooleanSetting("Portal", "Hide the nether portal screen tint", false))
+				.add(new BooleanSetting("Nausea", "Hide the nausea/portal warp overlay", false)));
+
+		// CustomSwing -> replace the hand swing animation (logic in HeldItemRendererMixin)
+		reg(new Module("CustomSwing", "Custom hand swing animation", Category.RENDER)
+				.add(new ModeSetting("Style", "Swing animation", "Vanilla", "Vanilla", "Stab", "Slide", "Spin", "Push", "Pull", "Wave", "Tap", "Circle", "Exaggerated"))
+				.add(new SliderSetting("Intensity", "Animation strength", 1.0, 0.1, 2.0, 0.1, "x")));
+
+		// CustomHand -> reposition/scale the first-person hand (logic in HeldItemRendererMixin)
+		reg(new Module("CustomHand", "Reposition the first-person hand", Category.RENDER)
+				.add(new SliderSetting("Size", "Hand scale", 1.0, 0.5, 2.0, 0.05, "x"))
+				.add(new BooleanSetting("Per hand", "Offset each hand separately", false))
+				.add(new SliderSetting("X", "Horizontal offset (both)", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Y", "Vertical offset (both)", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Z", "Depth offset (both)", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Main X", "Main hand horizontal", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Main Y", "Main hand vertical", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Main Z", "Main hand depth", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Off X", "Off hand horizontal", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Off Y", "Off hand vertical", 0, -1.0, 1.0, 0.02, ""))
+				.add(new SliderSetting("Off Z", "Off hand depth", 0, -1.0, 1.0, 0.02, "")));
 	}
 
 	// =========================== INTERFACE ===========================
