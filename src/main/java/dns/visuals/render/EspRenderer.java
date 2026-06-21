@@ -32,13 +32,16 @@ import java.util.List;
  * Boxes are drawn into the engine-managed {@link WorldRenderContext#consumers()} buffer (same
  * approach as HitboxRenderer) so the world renderer flushes them; we never call draw() ourselves.
  *
- * During the BEFORE_DEBUG_RENDER world event on 1.21.11, {@link WorldRenderContext#matrices()}
- * returns null (the engine no longer threads a global pose stack through this phase), so we build
- * the camera matrix ourselves from the camera pitch/yaw. Because that matrix carries only the
- * camera ORIENTATION (no translation), every coordinate we submit — boxes AND the nametag world
- * anchor — must be relative to the camera (offset by -cam).
- * Nametags are projected from 3D to screen space during the world-render pass, then drawn as 2D
- * text in {@link #renderOverlay(DrawContext)} from the InGameHud tail.
+ * KEY POINT about transforms on 1.21.11: the world renderer applies the camera VIEW matrix to the
+ * consumers() buffer when it flushes it, and (per the Fabric javadoc) expects every vertex to be
+ * CAMERA-RELATIVE. So box geometry is submitted through an IDENTITY matrix with coordinates offset
+ * by -cam; applying our own pitch/yaw rotation on top would transform twice and make the boxes
+ * drift/skew as the camera turns. (context.matrices() is null in BEFORE_DEBUG_RENDER, so we can't
+ * borrow the engine stack — but we don't need to, since identity is correct here.)
+ *
+ * Nametags are different: we project them from 3D to 2D ourselves, so that math DOES need the full
+ * camera view matrix (built by hand from pitch/yaw). They are drawn as 2D text in
+ * {@link #renderOverlay(DrawContext)} from the InGameHud tail.
  */
 public class EspRenderer {
 	public static final EspRenderer INSTANCE = new EspRenderer();
@@ -83,24 +86,25 @@ public class EspRenderer {
 		int fillAlpha = Math.max(0, Math.min(255, (int) esp.numVal("Fill opacity")));
 		int fillColor = (fillAlpha << 24) | (color & 0x00FFFFFF);
 
-		// context.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera
-		// orientation matrix by hand. It carries no translation, so all coordinates submitted
-		// below (boxes and nametag anchors) are offset by -cam to be camera-relative.
+		// Box geometry goes through an IDENTITY matrix: the engine applies the camera view when it
+		// flushes the consumers() buffer, so we only supply camera-relative coordinates (offset -cam).
 		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
-		Matrix4f modelView = ms.peek().getPositionMatrix();
+		Matrix4f identity = ms.peek().getPositionMatrix();
 
-		// proj * modelView for screen projection of nametags. Neither WorldRenderContext nor
-		// RenderSystem expose the projection matrix in 1.21.11, and GameRenderer#getFov is private,
-		// so we rebuild a perspective matrix from the FOV captured by GameRendererMixin. Near/far
-		// don't affect screen x/y, so any sane values are fine here.
+		// proj * view for screen projection of nametags. Neither WorldRenderContext nor RenderSystem
+		// expose the projection matrix in 1.21.11, and GameRenderer#getFov is private, so we rebuild a
+		// perspective matrix from the FOV captured by GameRendererMixin. Near/far don't affect screen
+		// x/y, so any sane values are fine here. The nametag projection (done by hand) DOES need the
+		// real camera view matrix, so we build it from pitch/yaw here (only for the projection math).
 		float fovDeg = lastFov > 0f ? lastFov : 70f;
 		int fbW = mc.getWindow().getFramebufferWidth();
 		int fbH = mc.getWindow().getFramebufferHeight();
 		float aspect = fbH == 0 ? 1f : (float) fbW / (float) fbH;
 		Matrix4f proj = new Matrix4f().perspective((float) Math.toRadians(fovDeg), aspect, 0.05f, 1000.0f);
-		Matrix4f mvp = new Matrix4f(proj).mul(modelView);
+		MatrixStack viewStack = new MatrixStack();
+		viewStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+		viewStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
+		Matrix4f mvp = new Matrix4f(proj).mul(viewStack.peek().getPositionMatrix());
 		int sw = mc.getWindow().getScaledWidth();
 		int sh = mc.getWindow().getScaledHeight();
 
@@ -117,13 +121,13 @@ public class EspRenderer {
 			if (mc.player.squaredDistanceTo(e) > rangeSq) continue;
 			if (visibleOnly && !mc.player.canSee(e)) continue;
 
-			// Camera-relative bounding box (our matrix has no camera translation baked in).
+			// Camera-relative bounding box (the identity matrix carries no transform).
 			Box box = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
 
 			if (consumers != null) {
 				if (fill) {
 					VertexConsumer fvc = consumers.getBuffer(RenderLayers.debugFilledBox());
-					filledBox(fvc, modelView, fillColor, box);
+					filledBox(fvc, identity, fillColor, box);
 				}
 				if (outline) {
 					VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
