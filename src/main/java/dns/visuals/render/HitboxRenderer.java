@@ -20,7 +20,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
@@ -28,10 +27,15 @@ import net.minecraft.world.World;
 /**
  * Renders entity hitboxes and spawns hit particles (Minecraft 1.21.11 render APIs).
  *
- * Important: we draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let
- * the world renderer flush it. Boxes are positioned at the entity's INTERPOLATED render position
- * (lastRenderX/Y/Z lerped by tickDelta) to match the smoothly-rendered model. Using the raw
- * bounding box (last tick position) made boxes visibly drift away from moving entities.
+ * We draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let the world
+ * renderer flush it. Crucially we also use the engine's own matrix stack via
+ * {@link WorldRenderContext#matrices()} instead of rebuilding a pitch/yaw matrix by hand: after the
+ * 1.21.9 render rework a hand-built camera matrix no longer matches the engine, which made boxes
+ * skew and drift further from entities with distance. The engine stack already carries the camera
+ * orientation, so all coordinates we submit must be relative to the camera (offset by -cam).
+ *
+ * Boxes are positioned at the entity's INTERPOLATED render position (lastRenderX/Y/Z lerped by the
+ * frame tick progress) to track the smoothly-rendered model.
  */
 public class HitboxRenderer {
 	public static final HitboxRenderer INSTANCE = new HitboxRenderer();
@@ -55,11 +59,9 @@ public class HitboxRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		// Camera-relative matrix: rotate by the camera, then translate world->camera space.
-		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180f));
-		ms.translate(-cam.x, -cam.y, -cam.z);
+		// Engine matrix stack (already carries the exact camera transform for this frame).
+		// Coordinates submitted to the engine buffer must be camera-relative, so we offset by -cam.
+		MatrixStack ms = context.matrices();
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 
@@ -95,7 +97,7 @@ public class HitboxRenderer {
 			double iz = MathHelper.lerp(td, e.lastRenderZ, e.getZ());
 			Box box = e.getBoundingBox().offset(ix - e.getX(), iy - e.getY(), iz - e.getZ());
 
-			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), 0.0, 0.0, 0.0, color, 1.5f);
+			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), -cam.x, -cam.y, -cam.z, color, 1.5f);
 		}
 	}
 
