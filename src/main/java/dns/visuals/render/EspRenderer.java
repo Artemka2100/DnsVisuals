@@ -16,7 +16,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import org.joml.Matrix4f;
@@ -31,6 +30,9 @@ import java.util.List;
  *
  * Boxes are drawn into the engine-managed {@link WorldRenderContext#consumers()} buffer (same
  * approach as HitboxRenderer) so the world renderer flushes them; we never call draw() ourselves.
+ * We use the engine's own matrix stack ({@link WorldRenderContext#matrices()}) instead of a
+ * hand-built pitch/yaw matrix (which drifts after the 1.21.9 render rework), so every coordinate we
+ * submit — boxes AND the nametag world anchor — must be relative to the camera (offset by -cam).
  * Nametags are projected from 3D to screen space during the world-render pass, then drawn as 2D
  * text in {@link #renderOverlay(DrawContext)} from the InGameHud tail.
  */
@@ -77,10 +79,9 @@ public class EspRenderer {
 		int fillAlpha = Math.max(0, Math.min(255, (int) esp.numVal("Fill opacity")));
 		int fillColor = (fillAlpha << 24) | (color & 0x00FFFFFF);
 
-		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180f));
-		ms.translate(-cam.x, -cam.y, -cam.z);
+		// Engine matrix stack (already carries the camera transform). Coordinates must be
+		// camera-relative, so boxes and nametag anchors are offset by -cam below.
+		MatrixStack ms = context.matrices();
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
 		// proj * modelView for screen projection of nametags. Neither WorldRenderContext nor
@@ -109,7 +110,8 @@ public class EspRenderer {
 			if (mc.player.squaredDistanceTo(e) > rangeSq) continue;
 			if (visibleOnly && !mc.player.canSee(e)) continue;
 
-			Box box = e.getBoundingBox();
+			// Camera-relative bounding box (engine matrix has no camera translation baked in).
+			Box box = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
 
 			if (consumers != null) {
 				if (fill) {
@@ -123,9 +125,9 @@ public class EspRenderer {
 			}
 
 			if (nametag) {
-				double hx = e.getX();
-				double hy = e.getY() + e.getHeight() + 0.45;
-				double hz = e.getZ();
+				double hx = e.getX() - cam.x;
+				double hy = (e.getY() + e.getHeight() + 0.45) - cam.y;
+				double hz = e.getZ() - cam.z;
 				Vector4f clip = new Vector4f((float) hx, (float) hy, (float) hz, 1f).mul(mvp);
 				if (clip.w() <= 0f) continue;
 				float ndcX = clip.x() / clip.w();
