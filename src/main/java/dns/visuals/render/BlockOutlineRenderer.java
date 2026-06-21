@@ -16,6 +16,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
@@ -28,9 +29,9 @@ import org.joml.Matrix4f;
  * BEFORE_DEBUG_RENDER pass used by the hitbox/ESP renderers and read the targeted block from the
  * player's crosshair target.
  *
- * Like the hitbox renderer, we use the engine's own matrix stack ({@link WorldRenderContext#matrices()})
- * rather than a hand-built pitch/yaw matrix (which drifts after the 1.21.9 rework). Coordinates are
- * therefore submitted relative to the camera (offset by -cam).
+ * During BEFORE_DEBUG_RENDER on 1.21.11, {@link WorldRenderContext#matrices()} returns null, so we
+ * build the camera ORIENTATION matrix by hand from the camera pitch/yaw. It carries no translation,
+ * so coordinates are submitted relative to the camera (offset by -cam).
  */
 public class BlockOutlineRenderer {
 	public static final BlockOutlineRenderer INSTANCE = new BlockOutlineRenderer();
@@ -59,8 +60,11 @@ public class BlockOutlineRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		// Engine matrix stack: already carries the camera transform. Submit camera-relative coords.
-		MatrixStack ms = wrc.matrices();
+		// wrc.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera orientation
+		// matrix by hand. It carries no translation, so coordinates are submitted camera-relative.
+		MatrixStack ms = new MatrixStack();
+		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
 		Matrix4f modelView = ms.peek().getPositionMatrix();
 
 		double ox = pos.getX() - cam.x;
