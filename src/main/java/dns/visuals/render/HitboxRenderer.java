@@ -20,7 +20,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
@@ -29,10 +28,12 @@ import net.minecraft.world.World;
  * Renders entity hitboxes and spawns hit particles (Minecraft 1.21.11 render APIs).
  *
  * We draw into the engine-managed {@link WorldRenderContext#consumers()} buffer and let the world
- * renderer flush it. During the BEFORE_DEBUG_RENDER world event on 1.21.11,
- * {@link WorldRenderContext#matrices()} returns null, so we build the camera ORIENTATION matrix by
- * hand from the camera pitch/yaw. That matrix carries no translation, so all coordinates we submit
- * must be relative to the camera (offset by -cam).
+ * renderer flush it. The world renderer applies the camera VIEW matrix to that buffer at flush time
+ * and (per the Fabric javadoc) expects every vertex to be CAMERA-RELATIVE. So we submit geometry
+ * through an IDENTITY matrix with coordinates offset by -cam; applying our own pitch/yaw rotation on
+ * top (as a previous version did) transforms twice and makes the boxes drift/skew as the camera
+ * turns. context.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, but we don't need it —
+ * identity is the correct matrix here.
  *
  * Boxes are positioned at the entity's INTERPOLATED render position (lastRenderX/Y/Z lerped by the
  * frame tick progress) to track the smoothly-rendered model.
@@ -59,12 +60,9 @@ public class HitboxRenderer {
 		if (camera == null) return;
 		Vec3d cam = camera.getCameraPos();
 
-		// context.matrices() is null in BEFORE_DEBUG_RENDER on 1.21.11, so build the camera
-		// orientation matrix by hand. It carries no translation, so coordinates submitted to the
-		// engine buffer are offset by -cam to be camera-relative.
+		// Identity matrix: the engine applies the camera view when it flushes the consumers() buffer,
+		// so we only supply camera-relative coordinates (offset by -cam in drawOutline below).
 		MatrixStack ms = new MatrixStack();
-		ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0f));
 
 		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 
