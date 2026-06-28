@@ -5,6 +5,7 @@ import net.minecraft.client.session.Session;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,17 +70,36 @@ public final class AltManager {
 	/**
 	 * Builds an offline {@link Session} for the given nickname. The access token is the literal
 	 * "0" (invalid for online auth), which is fine for offline-mode servers.
+	 *
+	 * The {@code Session} constructor ends with an account-type enum whose mapped name/location has
+	 * changed across Minecraft versions, so we resolve it reflectively: pick the 6-arg constructor,
+	 * find its enum parameter and use that enum's first constant (LEGACY). This avoids hard-coding a
+	 * symbol that may not exist in the current mappings.
 	 */
 	public static Session createOfflineSession(String name) {
 		UUID uuid = offlineUuid(name);
-		return new Session(
-				name,
-				uuid,
-				"0",
-				Optional.empty(),
-				Optional.empty(),
-				Session.AccountType.LEGACY
-		);
+		try {
+			for (Constructor<?> ctor : Session.class.getConstructors()) {
+				Class<?>[] params = ctor.getParameterTypes();
+				if (params.length != 6) continue;
+				Class<?> enumType = params[5];
+				if (!enumType.isEnum()) continue;
+				Object[] constants = enumType.getEnumConstants();
+				if (constants == null || constants.length == 0) continue;
+				Object accountType = constants[0]; // LEGACY is the first declared constant
+				return (Session) ctor.newInstance(
+						name,
+						uuid,
+						"0",
+						Optional.empty(),
+						Optional.empty(),
+						accountType
+				);
+			}
+		} catch (Exception e) {
+			System.err.println("[DnsVisuals] Failed to build offline session: " + e.getMessage());
+		}
+		return null;
 	}
 
 	private static void load() {
