@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
@@ -22,9 +22,9 @@ import org.joml.Matrix4f;
  * (arrow from a bow/crossbow, ender pearl, snowball, egg, trident) so you can see where it will go.
  *
  * The path is sampled tick-by-tick using the vanilla projectile motion model (initial speed along
- * the look vector, per-tick gravity, and air drag) and rendered as a trail of small camera-relative
- * cubes via the {@code debugFilledBox} buffer. Simulation stops early when the path enters a solid
- * block, and an optional larger cube marks the landing point.
+ * the look vector, per-tick gravity, and air drag) and rendered as a single continuous line made of
+ * connected segments via the {@code getLines} buffer. Simulation stops as soon as the path enters a
+ * solid block.
  */
 public class TrajectoryRenderer {
 	public static final TrajectoryRenderer INSTANCE = new TrajectoryRenderer();
@@ -59,7 +59,7 @@ public class TrajectoryRenderer {
 
 		MatrixStack ms = new MatrixStack();
 		Matrix4f mat = ms.peek().getPositionMatrix();
-		VertexConsumer vc = consumers.getBuffer(RenderLayers.debugFilledBox());
+		VertexConsumer vc = consumers.getBuffer(RenderLayer.getLines());
 
 		Vec3d pos = p.getEyePos();
 		Vec3d look = p.getRotationVec(1.0f);
@@ -68,36 +68,28 @@ public class TrajectoryRenderer {
 		double vz = look.z * type.speed;
 
 		int steps = (int) m.numVal("Steps");
-		double half = 0.03 + (m.numVal("Width") - 1) * 0.015;
 
 		boolean rainbow = m.boolVal("Rainbow");
 		double rspeed = m.numVal("Rainbow speed");
 		int baseColor = m.colorVal("Color");
 
 		Vec3d last = pos;
-		Vec3d landing = null;
 		for (int i = 0; i < steps; i++) {
 			Vec3d next = new Vec3d(last.x + vx, last.y + vy, last.z + vz);
+			int color = rainbow ? ColorUtil.rainbow(rspeed, i * 0.01) : baseColor;
+			line(vc, mat, color,
+					last.x - cam.x, last.y - cam.y, last.z - cam.z,
+					next.x - cam.x, next.y - cam.y, next.z - cam.z);
+
 			// Stop if this segment ends inside a solid block.
 			BlockPos bp = BlockPos.ofFloored(next);
-			if (!mc.world.getBlockState(bp).getCollisionShape(mc.world, bp).isEmpty()) {
-				landing = next;
-				break;
-			}
-			int color = rainbow ? ColorUtil.rainbow(rspeed, i * 0.01) : baseColor;
-			cube(vc, mat, color, next.x - cam.x, next.y - cam.y, next.z - cam.z, half);
+			if (!mc.world.getBlockState(bp).getCollisionShape(mc.world, bp).isEmpty()) break;
 
 			vy -= type.gravity;
 			vx *= type.drag;
 			vy *= type.drag;
 			vz *= type.drag;
 			last = next;
-		}
-
-		if (landing != null && m.boolVal("Landing marker")) {
-			int color = rainbow ? ColorUtil.rainbow(rspeed, 0) : baseColor;
-			cube(vc, mat, ColorUtil.withAlpha(color, 255),
-					landing.x - cam.x, landing.y - cam.y, landing.z - cam.z, half * 3.0);
 		}
 	}
 
@@ -110,25 +102,15 @@ public class TrajectoryRenderer {
 		return null;
 	}
 
-	/** Camera-relative axis-aligned cube of half-size h, drawn as 6 quads (color only). */
-	private static void cube(VertexConsumer vc, Matrix4f m, int c, double x, double y, double z, double h) {
-		float x1 = (float) (x - h), y1 = (float) (y - h), z1 = (float) (z - h);
-		float x2 = (float) (x + h), y2 = (float) (y + h), z2 = (float) (z + h);
-		quad(vc, m, c, x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2);
-		quad(vc, m, c, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1);
-		quad(vc, m, c, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1);
-		quad(vc, m, c, x1, y1, z2, x2, y1, z2, x2, y2, z2, x1, y2, z2);
-		quad(vc, m, c, x1, y1, z1, x1, y1, z2, x1, y2, z2, x1, y2, z1);
-		quad(vc, m, c, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2);
-	}
-
-	private static void quad(VertexConsumer vc, Matrix4f m, int c,
-			float ax, float ay, float az, float bx, float by, float bz,
-			float cx, float cy, float cz, float dx, float dy, float dz) {
-		vc.vertex(m, ax, ay, az).color(c);
-		vc.vertex(m, bx, by, bz).color(c);
-		vc.vertex(m, cx, cy, cz).color(c);
-		vc.vertex(m, dx, dy, dz).color(c);
+	/** Camera-relative line segment for the {@code getLines} layer (needs a per-vertex normal). */
+	private static void line(VertexConsumer vc, Matrix4f m, int c,
+			double x1, double y1, double z1, double x2, double y2, double z2) {
+		float dx = (float) (x2 - x1), dy = (float) (y2 - y1), dz = (float) (z2 - z1);
+		float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+		if (len < 1.0e-5f) return;
+		float nx = dx / len, ny = dy / len, nz = dz / len;
+		vc.vertex(m, (float) x1, (float) y1, (float) z1).color(c).normal(nx, ny, nz);
+		vc.vertex(m, (float) x2, (float) y2, (float) z2).color(c).normal(nx, ny, nz);
 	}
 
 	private enum ProjType {
