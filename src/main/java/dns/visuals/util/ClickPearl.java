@@ -10,20 +10,14 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 
 /**
- * "ClickPearl" macro: when the bound key is pressed, this finds an ender pearl in the hotbar,
- * silently switches to it, throws it, then switches back to whatever the player was holding.
+ * "ClickPearl" macro: when the bound key is pressed, instantly switch to an ender pearl in the
+ * hotbar, throw it, and switch straight back to whatever the player was holding — all within a
+ * single client tick (no swap delay).
  *
- * Driven once per client tick from {@link dns.visuals.DnsVisuals#onClientTick}. A small
- * configurable swap delay (in ticks) is used so the server registers the held-item change before
- * the use packet, and again before swapping back.
+ * Driven once per client tick from {@link dns.visuals.DnsVisuals#onClientTick}.
  */
 public final class ClickPearl {
 	private static boolean keyWasDown = false;
-
-	// Pending restore state while a throw is in progress.
-	private static int restoreSlot = -1;
-	private static int delayLeft = 0;
-	private static int phase = 0; // 0 = idle, 1 = wait then throw, 2 = wait then restore
 
 	private ClickPearl() {}
 
@@ -31,46 +25,22 @@ public final class ClickPearl {
 		Module m = ModuleManager.INSTANCE.find("ClickPearl");
 		if (m == null || !m.isEnabled()) {
 			keyWasDown = false;
-			phase = 0;
 			return;
 		}
 		if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-
-		// Advance an in-progress throw sequence.
-		if (phase != 0) {
-			if (delayLeft > 0) {
-				delayLeft--;
-				return;
-			}
-			if (phase == 1) {
-				// Pearl slot is selected now: throw it.
-				mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-				mc.player.swingHand(Hand.MAIN_HAND);
-				delayLeft = (int) m.numVal("Swap delay");
-				phase = 2;
-			} else {
-				// Restore the original slot.
-				if (restoreSlot >= 0) {
-					mc.player.getInventory().setSelectedSlot(restoreSlot);
-					mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(restoreSlot));
-				}
-				restoreSlot = -1;
-				phase = 0;
-			}
-			return;
-		}
 
 		// Rising-edge key detection on the module's keybind.
 		int key = m.keyVal("Key");
 		boolean down = key != InputUtil.UNKNOWN_KEY.getCode()
 				&& InputUtil.isKeyPressed(mc.getWindow(), key);
 		if (down && !keyWasDown) {
-			startThrow(mc, m);
+			throwPearl(mc, m);
 		}
 		keyWasDown = down;
 	}
 
-	private static void startThrow(MinecraftClient mc, Module m) {
+	/** Switches to a pearl, throws it, and restores the previous slot — all in one tick. */
+	private static void throwPearl(MinecraftClient mc, Module m) {
 		int pearlSlot = findPearl(mc);
 		if (pearlSlot < 0) {
 			if (m.boolVal("Notify")) {
@@ -78,18 +48,20 @@ public final class ClickPearl {
 			}
 			return;
 		}
-		restoreSlot = mc.player.getInventory().getSelectedSlot();
-		if (pearlSlot == restoreSlot) {
-			// Already holding a pearl: throw immediately, no restore needed.
-			mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-			mc.player.swingHand(Hand.MAIN_HAND);
-			restoreSlot = -1;
-			return;
+		int prev = mc.player.getInventory().getSelectedSlot();
+		boolean swap = pearlSlot != prev;
+		if (swap) {
+			mc.player.getInventory().setSelectedSlot(pearlSlot);
+			mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(pearlSlot));
 		}
-		mc.player.getInventory().setSelectedSlot(pearlSlot);
-		mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(pearlSlot));
-		delayLeft = (int) m.numVal("Swap delay");
-		phase = 1;
+		// Throw the pearl.
+		mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+		mc.player.swingHand(Hand.MAIN_HAND);
+		// Restore the original slot immediately.
+		if (swap) {
+			mc.player.getInventory().setSelectedSlot(prev);
+			mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(prev));
+		}
 	}
 
 	/** Returns the first hotbar slot (0-8) holding an ender pearl, or -1 if none. */
