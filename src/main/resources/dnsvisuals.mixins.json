@@ -14,6 +14,7 @@
 		"LivingEntityMixin",
 		"LivingEntityParticleMixin",
 		"MinecraftClientMixin",
+		"TitleScreenMixin",
 		"WorldMixin"
 	],
 	"injectors": {
