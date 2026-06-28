@@ -22,12 +22,19 @@ import org.joml.Matrix4f;
  * (arrow from a bow/crossbow, ender pearl, snowball, egg, trident) so you can see where it will go.
  *
  * The path is sampled tick-by-tick using the vanilla projectile motion model (initial speed along
- * the look vector, per-tick gravity, and air drag) and rendered as a single continuous line made of
- * connected segments via the {@code RenderLayers.lines()} buffer. Simulation stops as soon as the
- * path enters a solid block.
+ * the look vector, per-tick gravity, and air drag) and rendered as a single continuous line.
+ *
+ * <p>IMPORTANT: the line is drawn as a thin camera-independent "tube" (two perpendicular thin quads
+ * per segment) through the {@code RenderLayers.debugFilledBox()} buffer — the SAME proven, crash-free
+ * path used by {@link HitMarker} and {@link ChinaHat}. The previous version wrote vertices straight
+ * into the {@code lines()} layer with per-vertex normals, which crashed the game on buffer flush in
+ * 1.21.11. The filled-box layer needs only position + color, so it is safe here.
  */
 public class TrajectoryRenderer {
 	public static final TrajectoryRenderer INSTANCE = new TrajectoryRenderer();
+
+	/** Half-thickness of the rendered line, in blocks. */
+	private static final double HALF_WIDTH = 0.025;
 
 	private final MinecraftClient mc = MinecraftClient.getInstance();
 
@@ -59,7 +66,7 @@ public class TrajectoryRenderer {
 
 		MatrixStack ms = new MatrixStack();
 		Matrix4f mat = ms.peek().getPositionMatrix();
-		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
+		VertexConsumer vc = consumers.getBuffer(RenderLayers.debugFilledBox());
 
 		Vec3d pos = p.getEyePos();
 		Vec3d look = p.getRotationVec(1.0f);
@@ -77,7 +84,7 @@ public class TrajectoryRenderer {
 		for (int i = 0; i < steps; i++) {
 			Vec3d next = new Vec3d(last.x + vx, last.y + vy, last.z + vz);
 			int color = rainbow ? ColorUtil.rainbow(rspeed, i * 0.01) : baseColor;
-			line(vc, mat, color,
+			segment(vc, mat, color, HALF_WIDTH,
 					last.x - cam.x, last.y - cam.y, last.z - cam.z,
 					next.x - cam.x, next.y - cam.y, next.z - cam.z);
 
@@ -102,15 +109,56 @@ public class TrajectoryRenderer {
 		return null;
 	}
 
-	/** Camera-relative line segment for the {@code RenderLayers.lines()} layer (needs a per-vertex normal). */
-	private static void line(VertexConsumer vc, Matrix4f m, int c,
+	/**
+	 * Draws one line segment as a thin "tube": two perpendicular thin quads around the segment axis
+	 * so the line stays visible from any viewing angle. All coordinates are camera-relative.
+	 */
+	private static void segment(VertexConsumer vc, Matrix4f m, int c, double half,
 			double x1, double y1, double z1, double x2, double y2, double z2) {
-		float dx = (float) (x2 - x1), dy = (float) (y2 - y1), dz = (float) (z2 - z1);
-		float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-		if (len < 1.0e-5f) return;
-		float nx = dx / len, ny = dy / len, nz = dz / len;
-		vc.vertex(m, (float) x1, (float) y1, (float) z1).color(c).normal(nx, ny, nz);
-		vc.vertex(m, (float) x2, (float) y2, (float) z2).color(c).normal(nx, ny, nz);
+		double dx = x2 - x1, dy = y2 - y1, dz = z2 - z1;
+		double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+		if (len < 1.0e-5) return;
+		dx /= len; dy /= len; dz /= len;
+
+		// Reference "up" that is not parallel to the segment direction.
+		double ux = 0, uy = 1, uz = 0;
+		if (Math.abs(dy) > 0.99) { ux = 1; uy = 0; uz = 0; }
+
+		// side = dir x up
+		double sx = dy * uz - dz * uy, sy = dz * ux - dx * uz, sz = dx * uy - dy * ux;
+		double sl = Math.sqrt(sx * sx + sy * sy + sz * sz);
+		sx /= sl; sy /= sl; sz /= sl;
+
+		// vert = dir x side
+		double vxn = dy * sz - dz * sy, vyn = dz * sx - dx * sz, vzn = dx * sy - dy * sx;
+		double vl = Math.sqrt(vxn * vxn + vyn * vyn + vzn * vzn);
+		vxn /= vl; vyn /= vl; vzn /= vl;
+
+		sx *= half; sy *= half; sz *= half;
+		vxn *= half; vyn *= half; vzn *= half;
+
+		// Quad in the "side" plane.
+		quad(vc, m, c,
+				x1 - sx, y1 - sy, z1 - sz, x1 + sx, y1 + sy, z1 + sz,
+				x2 + sx, y2 + sy, z2 + sz, x2 - sx, y2 - sy, z2 - sz);
+		// Quad in the "vert" plane.
+		quad(vc, m, c,
+				x1 - vxn, y1 - vyn, z1 - vzn, x1 + vxn, y1 + vyn, z1 + vzn,
+				x2 + vxn, y2 + vyn, z2 + vzn, x2 - vxn, y2 - vyn, z2 - vzn);
+	}
+
+	/** Double-sided quad so the band is visible from both faces (position + color only). */
+	private static void quad(VertexConsumer vc, Matrix4f m, int c,
+			double ax, double ay, double az, double bx, double by, double bz,
+			double cx, double cy, double cz, double dx, double dy, double dz) {
+		vc.vertex(m, (float) ax, (float) ay, (float) az).color(c);
+		vc.vertex(m, (float) bx, (float) by, (float) bz).color(c);
+		vc.vertex(m, (float) cx, (float) cy, (float) cz).color(c);
+		vc.vertex(m, (float) dx, (float) dy, (float) dz).color(c);
+		vc.vertex(m, (float) dx, (float) dy, (float) dz).color(c);
+		vc.vertex(m, (float) cx, (float) cy, (float) cz).color(c);
+		vc.vertex(m, (float) bx, (float) by, (float) bz).color(c);
+		vc.vertex(m, (float) ax, (float) ay, (float) az).color(c);
 	}
 
 	private enum ProjType {
