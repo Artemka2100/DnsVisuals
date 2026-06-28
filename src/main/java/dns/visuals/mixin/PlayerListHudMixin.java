@@ -16,7 +16,7 @@ public class PlayerListHudMixin {
 	@Inject(method = "getPlayerName", at = @At("RETURN"), cancellable = true)
 	private void dnsvisuals$dvTag(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
 		if (entry == null || entry.getProfile() == null) return;
-		Text decorated = DvNetwork.decorate(cir.getReturnValue(), entry.getProfile().getId());
+		Text decorated = DvNetwork.decorate(cir.getReturnValue(), entry.getProfile().id());
 		if (decorated != null) cir.setReturnValue(decorated);
 	}
 }
