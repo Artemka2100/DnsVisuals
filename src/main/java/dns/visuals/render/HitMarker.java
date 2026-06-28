@@ -21,6 +21,9 @@ import org.joml.Matrix4f;
  * then fades it out and removes it after the configured duration (default 5s). Uses the same
  * camera-relative IDENTITY-matrix + {@code debugFilledBox} approach as {@link BlockOutlineRenderer}
  * so it needs no per-vertex normals and survives the 1.21.11 render changes.
+ *
+ * <p>The band can also bob up and down: with "Bob height" &gt; 0 the whole shape oscillates
+ * vertically on a sine wave whose rate is controlled by "Bob speed".
  */
 public class HitMarker {
 	public static final HitMarker INSTANCE = new HitMarker();
@@ -54,8 +57,12 @@ public class HitMarker {
 		double iy = MathHelper.lerp(td, e.lastRenderY, e.getY());
 		double iz = MathHelper.lerp(td, e.lastRenderZ, e.getZ());
 
+		// Up/down bob: oscillate the whole band on a sine wave. Disabled when Bob height == 0.
+		double bob = Math.sin((System.currentTimeMillis() / 1000.0) * m.numVal("Bob speed") * Math.PI * 2.0)
+				* m.numVal("Bob height");
+
 		double cx = ix - cam.x;
-		double cy = iy + m.numVal("Height") - cam.y;
+		double cy = iy + m.numVal("Height") + bob - cam.y;
 		double cz = iz - cam.z;
 
 		double ro = m.numVal("Radius");
