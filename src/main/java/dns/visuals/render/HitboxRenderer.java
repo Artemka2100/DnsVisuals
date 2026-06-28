@@ -37,7 +37,11 @@ import net.minecraft.world.World;
  *
  * Boxes are positioned at the entity's INTERPOLATED render position (lastRenderX/Y/Z lerped by the
  * frame tick progress) to track the smoothly-rendered model. The "Box size" setting visually grows
- * or shrinks every box by the same amount on all axes via Box#expand.
+ * or shrinks every box by the same amount on all axes via Box#expand. The "Line width" setting
+ * controls the outline thickness.
+ *
+ * <p>When the HitCircle module is enabled the hitboxes are intentionally NOT drawn, so the
+ * ring/square around your target is shown on its own without the box overlapping it.
  */
 public class HitboxRenderer {
 	public static final HitboxRenderer INSTANCE = new HitboxRenderer();
@@ -53,6 +57,10 @@ public class HitboxRenderer {
 		Module hb = ModuleManager.INSTANCE.find("Hitboxes");
 		if (hb == null || !hb.isEnabled()) return;
 		if (mc.world == null || mc.player == null) return;
+
+		// Hide hitboxes entirely while the HitCircle ring/square is active.
+		Module hitCircle = ModuleManager.INSTANCE.find("HitCircle");
+		if (hitCircle != null && hitCircle.isEnabled()) return;
 
 		VertexConsumerProvider consumers = context.consumers();
 		if (consumers == null) return;
@@ -71,6 +79,8 @@ public class HitboxRenderer {
 		double range = hb.numVal("Range");
 		double rangeSq = range * range;
 		double expand = hb.numVal("Box size");
+		float lineWidth = (float) hb.numVal("Line width");
+		if (lineWidth <= 0) lineWidth = 1.5f;
 
 		int baseColor = hb.colorVal("Color");
 		int hitColor = hb.colorVal("Hit color");
@@ -101,7 +111,7 @@ public class HitboxRenderer {
 			Box box = e.getBoundingBox().offset(ix - e.getX(), iy - e.getY(), iz - e.getZ());
 			if (expand != 0) box = box.expand(expand);
 
-			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), -cam.x, -cam.y, -cam.z, color, 1.5f);
+			VertexRendering.drawOutline(ms, vc, VoxelShapes.cuboid(box), -cam.x, -cam.y, -cam.z, color, lineWidth);
 		}
 	}
 
