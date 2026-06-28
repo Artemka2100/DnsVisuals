@@ -435,31 +435,6 @@ public class ModuleManager {
 				.add(new ModeSetting("Particle", "Particle type", "Crit", "Crit", "Flame", "Heart", "Cloud", "Angry"))
 				.add(new SliderSetting("Particle count", "Particles per hit", 16, 1, 50, 1, "")));
 
-		// ESP -> highlight visible players/entities
-		reg(new Module("ESP", "Highlight players/entities in sight", Category.RENDER)
-				.add(new ModeSetting("Mode", "Render style", "Outline", "Outline", "Fill", "Both"))
-				.add(new BooleanSetting("Visible only", "Only when in line of sight", true))
-				.add(new BooleanSetting("Players only", "Only players", true))
-				.add(new BooleanSetting("Nametag", "Name above entity", true))
-				.add(new BooleanSetting("Health in name", "Append health to name", true))
-				.add(new SliderSetting("Range", "Max distance", 48, 4, 128, 1, "m"))
-				.add(new SliderSetting("Line width", "Outline width", 1.5, 0.5, 4, 0.5, "px"))
-				.add(new ColorSetting("Color", "ESP color", 255, 80, 80, 255))
-				.add(new SliderSetting("Fill opacity", "Fill alpha", 40, 0, 150, 5, "")));
-
-		// Chams -> solid color FILL on players/mobs (depth-respecting; does not show through walls)
-		reg(new Module("Chams", "Solid color fill on players/mobs", Category.RENDER)
-				.add(new ModeSetting("Mode", "Render style", "Fill", "Fill", "Outline", "Both"))
-				.add(new ModeSetting("Color mode", "How the color is chosen", "Static", "Static", "Rainbow", "Health", "Distance"))
-				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
-				.add(new BooleanSetting("Players", "Color other players", true))
-				.add(new BooleanSetting("Mobs", "Color mobs/animals", false))
-				.add(new BooleanSetting("Self", "Color your own model (3rd person)", false))
-				.add(new BooleanSetting("Visible only", "Only when in line of sight", true))
-				.add(new ColorSetting("Players color", "Player fill color", 255, 120, 120, 255))
-				.add(new ColorSetting("Mobs color", "Mob fill color", 120, 200, 255, 255))
-				.add(new SliderSetting("Opacity", "Fill alpha", 255, 40, 255, 5, "")));
-
 		// NoRender -> disable selected visual effects
 		reg(new Module("NoRender", "Disable selected visual effects", Category.RENDER)
 				.add(new BooleanSetting("HurtCam", "No damage camera tilt", true))
