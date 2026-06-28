@@ -8,7 +8,6 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.Ambient;
 import dns.visuals.render.BlockOutlineRenderer;
-import dns.visuals.render.EspRenderer;
 import dns.visuals.render.HitboxRenderer;
 import dns.visuals.render.JumpCircle;
 import dns.visuals.render.Waypoint;
@@ -106,7 +105,6 @@ public class DnsVisuals implements ClientModInitializer {
 		// 1.21.9 port, so we read the crosshair target instead.
 		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> {
 			HitboxRenderer.INSTANCE.onWorldRender(context);
-			EspRenderer.INSTANCE.onWorldRender(context);
 			BlockOutlineRenderer.INSTANCE.onWorldRender(context);
 		});
 
