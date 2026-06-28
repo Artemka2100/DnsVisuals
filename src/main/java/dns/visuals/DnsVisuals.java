@@ -2,6 +2,7 @@ package dns.visuals;
 
 import dns.visuals.config.ConfigManager;
 import dns.visuals.gui.ClickGuiScreen;
+import dns.visuals.gui.ConfigManagerScreen;
 import dns.visuals.gui.HudEditorScreen;
 import dns.visuals.module.Category;
 import dns.visuals.module.Module;
@@ -124,12 +125,19 @@ public class DnsVisuals implements ClientModInitializer {
 		});
 
 		// Intercept client-side chat commands (cancel sending them to the server):
-		//  .hud  -> open the HUD editor screen (drag elements to reposition them)
-		//  .goto -> waypoint commands handled by Waypoint
+		//  .hud    -> open the HUD editor screen (drag elements to reposition them)
+		//  .config -> open the Config Manager screen (create/load/delete named configs)
+		//  .goto   -> waypoint commands handled by Waypoint
 		ClientSendMessageEvents.ALLOW_CHAT.register(message -> {
-			if (message.trim().equalsIgnoreCase(".hud")) {
+			String trimmed = message.trim();
+			if (trimmed.equalsIgnoreCase(".hud")) {
 				MinecraftClient mc = MinecraftClient.getInstance();
 				mc.send(() -> mc.setScreen(new HudEditorScreen()));
+				return false;
+			}
+			if (trimmed.equalsIgnoreCase(".config") || trimmed.equalsIgnoreCase(".cfg")) {
+				MinecraftClient mc = MinecraftClient.getInstance();
+				mc.send(() -> mc.setScreen(new ConfigManagerScreen()));
 				return false;
 			}
 			return !Waypoint.handleCommand(message);
