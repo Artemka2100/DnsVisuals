@@ -97,6 +97,12 @@ public class DnsVisuals implements ClientModInitializer {
 		ambients.add(new ColorSetting("Color", "Particle color", 180, 220, 255, 255));
 		ModuleManager.INSTANCE.all().add(ambients);
 
+		// DVTag: prefixes a gold "DV" on the names of players running DnsVisuals (tab list + in-world
+		// nametag). The local player always shows the tag; detecting OTHER players requires a server
+		// relay plugin to call DvNetwork.markDvUser(uuid). See DvNetwork for details.
+		Module dvTag = new Module("DVTag", "Show a 'DV' tag on players running DnsVisuals", Category.MISC);
+		ModuleManager.INSTANCE.all().add(dvTag);
+
 		// NOTE: CustomHand and CustomSwing are registered by ModuleManager.buildRender() with their
 		// full feature set (per-hand offsets / multiple swing styles). They used to be registered a
 		// second time here with a simpler setting set, which created dead duplicate entries in the
