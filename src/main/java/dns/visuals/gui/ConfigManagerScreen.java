@@ -189,7 +189,7 @@ public class ConfigManagerScreen extends Screen {
 			if (!nameBuffer.isEmpty()) nameBuffer = nameBuffer.substring(0, nameBuffer.length() - 1);
 			return true;
 		}
-		Char c = mapKey(key);
+		Character c = mapKey(key);
 		if (c != null && nameBuffer.length() < 32) {
 			nameBuffer += c;
 			return true;
