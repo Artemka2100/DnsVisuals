@@ -385,6 +385,47 @@ public class ModuleManager {
 					}
 					return dy - y;
 				}));
+
+		// 12. Clock -> real-world system time
+		reg(new Module("Clock", "Real-world system time", Category.HUD)
+				.add(new ModeSetting("Format", "Time format", "HH:mm:ss", "HH:mm:ss", "HH:mm", "hh:mm:ss a", "hh:mm a"))
+				.add(new BooleanSetting("Label", "Show a clock icon", false))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.hud((ctx, x, y, self) -> {
+					String pattern = self.modeVal("Format");
+					String time;
+					try {
+						time = java.time.LocalTime.now()
+								.format(java.time.format.DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH));
+					} catch (Exception ex) {
+						time = java.time.LocalTime.now()
+								.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
+					}
+					String text = (self.boolVal("Label") ? "\u23F0 " : "") + time;
+					ctx.drawText(tr(), text, x, y, self.colorVal("Color"), self.boolVal("Shadow"));
+					return tr().fontHeight;
+				}));
+
+		// 13. ServerIP -> address of the server you're connected to
+		reg(new Module("ServerIP", "Address of the current server", Category.HUD)
+				.add(new BooleanSetting("Label", "Show 'IP:' prefix", true))
+				.add(new BooleanSetting("Shadow", "Text shadow", true))
+				.add(new ColorSetting("Color", "Text color", 255, 255, 255, 255))
+				.hud((ctx, x, y, self) -> {
+					MinecraftClient mc = MinecraftClient.getInstance();
+					String addr;
+					if (mc.isInSingleplayer()) {
+						addr = "Singleplayer";
+					} else if (mc.getCurrentServerEntry() != null) {
+						addr = mc.getCurrentServerEntry().address;
+					} else {
+						addr = "-";
+					}
+					String text = (self.boolVal("Label") ? "IP: " : "") + addr;
+					ctx.drawText(tr(), text, x, y, self.colorVal("Color"), self.boolVal("Shadow"));
+					return tr().fontHeight;
+				}));
 	}
 
 	// =========================== RENDER ===========================
@@ -467,6 +508,38 @@ public class ModuleManager {
 				.add(new SliderSetting("Off X", "Off hand horizontal", 0, -1.0, 1.0, 0.02, ""))
 				.add(new SliderSetting("Off Y", "Off hand vertical", 0, -1.0, 1.0, 0.02, ""))
 				.add(new SliderSetting("Off Z", "Off hand depth", 0, -1.0, 1.0, 0.02, "")));
+
+		// HitCircle -> ring/square that appears around an entity you just hit, then disappears
+		reg(new Module("HitCircle", "Ring/square around the last entity you hit", Category.RENDER)
+				.add(new ModeSetting("Shape", "Marker shape", "Circle", "Circle", "Square"))
+				.add(new SliderSetting("Radius", "Marker radius", 0.8, 0.3, 2.5, 0.1, "m"))
+				.add(new SliderSetting("Duration", "Seconds before it disappears", 5, 1, 15, 1, "s"))
+				.add(new SliderSetting("Height", "Vertical offset", 0.05, 0.0, 3.0, 0.05, "m"))
+				.add(new SliderSetting("Spin", "Rotation speed", 1.0, 0.0, 5.0, 0.25, "x"))
+				.add(new SliderSetting("Points", "Circle smoothness", 40, 8, 80, 1, ""))
+				.add(new BooleanSetting("Rainbow", "Animated color", false))
+				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
+				.add(new ColorSetting("Color", "Marker color", 255, 122, 0, 220)));
+
+		// ChinaHat -> a conical cosmetic hat above your own head
+		reg(new Module("ChinaHat", "Conical hat cosmetic above your head", Category.RENDER)
+				.add(new SliderSetting("Size", "Hat radius", 0.6, 0.2, 1.5, 0.05, "m"))
+				.add(new SliderSetting("Height", "Height above head", 0.3, 0.0, 1.5, 0.05, "m"))
+				.add(new SliderSetting("Sides", "Cone smoothness", 32, 3, 64, 1, ""))
+				.add(new SliderSetting("Spin", "Rotation speed", 1.0, 0.0, 5.0, 0.25, "x"))
+				.add(new BooleanSetting("Rainbow", "Animated color", true))
+				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
+				.add(new ColorSetting("Color", "Hat color", 255, 60, 60, 200)));
+
+		// Direction -> predicts and draws the flight path of arrows/pearls you throw
+		reg(new Module("Direction", "Predicts the flight path of arrows/pearls you throw", Category.RENDER)
+				.add(new ModeSetting("Mode", "When to show", "Auto", "Auto", "Always"))
+				.add(new SliderSetting("Steps", "Simulation length", 80, 10, 200, 5, ""))
+				.add(new SliderSetting("Width", "Line width", 2, 1, 5, 0.5, "px"))
+				.add(new BooleanSetting("Landing marker", "Mark the landing point", true))
+				.add(new BooleanSetting("Rainbow", "Animated color", false))
+				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4.0, 0.1, "x"))
+				.add(new ColorSetting("Color", "Path color", 0, 200, 255, 220)));
 	}
 
 	// =========================== INTERFACE ===========================
@@ -590,5 +663,12 @@ public class ModuleManager {
 				.add(new BooleanSetting("Rainbow", "Animated color", true))
 				.add(new SliderSetting("Rainbow speed", "Hue speed", 1.0, 0.1, 4, 0.1, "x"))
 				.add(new ColorSetting("Color", "Static color", 255, 255, 85, 255)));
+
+		// ClickPearl -> press a key to throw an ender pearl, then swap back to your previous item
+		reg(new Module("ClickPearl", "Throw an ender pearl on a key, then swap back", Category.MISC)
+				.add(new KeybindSetting("Key", "Throw pearl", GLFW.GLFW_KEY_V))
+				.add(new BooleanSetting("Swap back", "Restore previous hotbar slot", true))
+				.add(new SliderSetting("Swap delay", "Ticks before swapping back", 2, 1, 10, 1, "t"))
+				.add(new BooleanSetting("Notify", "Chat message when no pearl", true)));
 	}
 }
