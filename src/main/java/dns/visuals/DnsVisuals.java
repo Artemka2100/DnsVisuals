@@ -108,6 +108,19 @@ public class DnsVisuals implements ClientModInitializer {
 		// second time here with a simpler setting set, which created dead duplicate entries in the
 		// menu (find() returned the ModuleManager copies, so the duplicates did nothing). Removed.
 
+		// Extra settings bolted onto existing render modules:
+		//  - Hitboxes: configurable outline thickness.
+		//  - HitCircle: up/down (bob) animation for the ring/square around your target.
+		Module hitboxesMod = ModuleManager.INSTANCE.find("Hitboxes");
+		if (hitboxesMod != null) {
+			hitboxesMod.add(new SliderSetting("Line width", "Hitbox outline thickness", 1.5, 0.5, 5.0, 0.5, "px"));
+		}
+		Module hitCircleMod = ModuleManager.INSTANCE.find("HitCircle");
+		if (hitCircleMod != null) {
+			hitCircleMod.add(new SliderSetting("Bob speed", "Up/down animation speed", 1.0, 0.0, 5.0, 0.25, "x"));
+			hitCircleMod.add(new SliderSetting("Bob height", "Up/down animation height", 0.25, 0.0, 1.5, 0.05, "m"));
+		}
+
 		ConfigManager.load();
 
 		// 1.21.11: WorldRenderEvents moved to ...rendering.v1.world; BEFORE_DEBUG_RENDER is the
