@@ -51,7 +51,7 @@ public final class ClickPearl {
 			} else {
 				// Restore the original slot.
 				if (restoreSlot >= 0) {
-					mc.player.getInventory().selectedSlot = restoreSlot;
+					mc.player.getInventory().setSelectedSlot(restoreSlot);
 					mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(restoreSlot));
 				}
 				restoreSlot = -1;
@@ -63,7 +63,7 @@ public final class ClickPearl {
 		// Rising-edge key detection on the module's keybind.
 		int key = m.keyVal("Key");
 		boolean down = key != InputUtil.UNKNOWN_KEY.getCode()
-				&& InputUtil.isKeyPressed(mc.getWindow().getHandle(), key);
+				&& InputUtil.isKeyPressed(mc.getWindow(), key);
 		if (down && !keyWasDown) {
 			startThrow(mc, m);
 		}
@@ -78,7 +78,7 @@ public final class ClickPearl {
 			}
 			return;
 		}
-		restoreSlot = mc.player.getInventory().selectedSlot;
+		restoreSlot = mc.player.getInventory().getSelectedSlot();
 		if (pearlSlot == restoreSlot) {
 			// Already holding a pearl: throw immediately, no restore needed.
 			mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
@@ -86,7 +86,7 @@ public final class ClickPearl {
 			restoreSlot = -1;
 			return;
 		}
-		mc.player.getInventory().selectedSlot = pearlSlot;
+		mc.player.getInventory().setSelectedSlot(pearlSlot);
 		mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(pearlSlot));
 		delayLeft = (int) m.numVal("Swap delay");
 		phase = 1;
