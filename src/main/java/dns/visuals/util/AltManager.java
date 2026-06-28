@@ -1,6 +1,5 @@
 package dns.visuals.util;
 
-import com.mojang.authlib.minecraft.client.MinecraftClient; // not used directly; kept out below
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.session.Session;
 
