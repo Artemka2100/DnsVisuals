@@ -8,8 +8,11 @@ import dns.visuals.module.Module;
 import dns.visuals.module.ModuleManager;
 import dns.visuals.render.Ambient;
 import dns.visuals.render.BlockOutlineRenderer;
+import dns.visuals.render.ChinaHat;
+import dns.visuals.render.HitMarker;
 import dns.visuals.render.HitboxRenderer;
 import dns.visuals.render.JumpCircle;
+import dns.visuals.render.TrajectoryRenderer;
 import dns.visuals.render.Waypoint;
 import dns.visuals.render.WaypointHud;
 import dns.visuals.setting.BooleanSetting;
@@ -18,6 +21,7 @@ import dns.visuals.setting.ModeSetting;
 import dns.visuals.setting.SliderSetting;
 import dns.visuals.util.AttackTracker;
 import dns.visuals.util.AutoTool;
+import dns.visuals.util.ClickPearl;
 import dns.visuals.util.CpsTracker;
 import dns.visuals.util.TpsTracker;
 import net.fabricmc.api.ClientModInitializer;
@@ -106,6 +110,9 @@ public class DnsVisuals implements ClientModInitializer {
 		WorldRenderEvents.BEFORE_DEBUG_RENDER.register(context -> {
 			HitboxRenderer.INSTANCE.onWorldRender(context);
 			BlockOutlineRenderer.INSTANCE.onWorldRender(context);
+			HitMarker.INSTANCE.onWorldRender(context);
+			ChinaHat.INSTANCE.onWorldRender(context);
+			TrajectoryRenderer.INSTANCE.onWorldRender(context);
 		});
 
 		AttackEntityCallback.EVENT.register(HitboxRenderer.INSTANCE::onAttack);
@@ -148,6 +155,7 @@ public class DnsVisuals implements ClientModInitializer {
 			tickSprint(mc);
 			AutoTool.tick();
 			Ambient.tick(mc);
+			ClickPearl.tick(mc);
 
 			// JumpCircles: fire on the rising edge of leaving the ground with upward velocity.
 			boolean onGround = mc.player.isOnGround();
