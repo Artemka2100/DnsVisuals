@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
@@ -23,8 +23,8 @@ import org.joml.Matrix4f;
  *
  * The path is sampled tick-by-tick using the vanilla projectile motion model (initial speed along
  * the look vector, per-tick gravity, and air drag) and rendered as a single continuous line made of
- * connected segments via the {@code getLines} buffer. Simulation stops as soon as the path enters a
- * solid block.
+ * connected segments via the {@code RenderLayers.lines()} buffer. Simulation stops as soon as the
+ * path enters a solid block.
  */
 public class TrajectoryRenderer {
 	public static final TrajectoryRenderer INSTANCE = new TrajectoryRenderer();
@@ -59,7 +59,7 @@ public class TrajectoryRenderer {
 
 		MatrixStack ms = new MatrixStack();
 		Matrix4f mat = ms.peek().getPositionMatrix();
-		VertexConsumer vc = consumers.getBuffer(RenderLayer.getLines());
+		VertexConsumer vc = consumers.getBuffer(RenderLayers.lines());
 
 		Vec3d pos = p.getEyePos();
 		Vec3d look = p.getRotationVec(1.0f);
@@ -102,7 +102,7 @@ public class TrajectoryRenderer {
 		return null;
 	}
 
-	/** Camera-relative line segment for the {@code getLines} layer (needs a per-vertex normal). */
+	/** Camera-relative line segment for the {@code RenderLayers.lines()} layer (needs a per-vertex normal). */
 	private static void line(VertexConsumer vc, Matrix4f m, int c,
 			double x1, double y1, double z1, double x2, double y2, double z2) {
 		float dx = (float) (x2 - x1), dy = (float) (y2 - y1), dz = (float) (z2 - z1);
